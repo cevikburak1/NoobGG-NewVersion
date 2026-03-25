@@ -1,0 +1,55 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## VS / Rider
+.vs/
+.idea/
+*.swp
+*~
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+bld/
+
+## NuGet
+**/packages/*
+!**/packages/build/
+*.nupkg
+**/[Pp]ackages/
+
+## Logs
+logs/
+*.log
+
+## OS
+Thumbs.db
+.DS_Store
+
+## Environment
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+
+## Docker
+docker-compose.override.yml
+
+## Node (frontend)
+node_modules/
+dist/
+
+## Tasks
+tasks/
+
+## Cursor
+.cursor/

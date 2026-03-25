@@ -1,0 +1,22 @@
+namespace NoobGg.Application.Common.Constants;
+
+public static class CollectionNames
+{
+    public const string Users = "users";
+    public const string RefreshTokens = "refreshTokens";
+    public const string UserProfiles = "userProfiles";
+    public const string UserGameProfiles = "userGameProfiles";
+    public const string Games = "games";
+    public const string Rooms = "rooms";
+    public const string RoomMembers = "roomMembers";
+    public const string Messages = "messages";
+    public const string Friendships = "friendships";
+    public const string Favorites = "favorites";
+    public const string Blocks = "blocks";
+    public const string Reports = "reports";
+    public const string Notifications = "notifications";
+    public const string SubscriptionPlans = "subscriptionPlans";
+    public const string UserSubscriptions = "userSubscriptions";
+    public const string Presences = "presences";
+    public const string Audits = "audits";
+}

@@ -1,0 +1,363 @@
+using MongoDB.Driver;
+using NoobGg.Application.Common.Constants;
+using NoobGg.Application.Common.Interfaces;
+using NoobGg.Domain.Entities;
+
+namespace NoobGg.Api.BackgroundJobs;
+
+public class MongoIndexInitializer : IHostedService
+{
+    private readonly IMongoContext _mongoContext;
+    private readonly ILogger<MongoIndexInitializer> _logger;
+
+    public MongoIndexInitializer(IMongoContext mongoContext, ILogger<MongoIndexInitializer> logger)
+    {
+        _mongoContext = mongoContext;
+        _logger = logger;
+    }
+
+    public async Task StartAsync(CancellationToken ct)
+    {
+        try
+        {
+            await CreateAllIndexes(ct);
+            _logger.LogInformation("MongoDB indexes ensured for all collections");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create MongoDB indexes");
+        }
+    }
+
+    public Task StopAsync(CancellationToken ct) => Task.CompletedTask;
+
+    private async Task CreateAllIndexes(CancellationToken ct)
+    {
+        await CreateUserIndexes(ct);
+        await CreateRefreshTokenIndexes(ct);
+        await CreateUserProfileIndexes(ct);
+        await CreateUserGameProfileIndexes(ct);
+        await CreateGameIndexes(ct);
+        await CreateRoomIndexes(ct);
+        await CreateRoomMemberIndexes(ct);
+        await CreateMessageIndexes(ct);
+        await CreateFriendshipIndexes(ct);
+        await CreateFavoriteIndexes(ct);
+        await CreateBlockIndexes(ct);
+        await CreateReportIndexes(ct);
+        await CreateNotificationIndexes(ct);
+        await CreateSubscriptionPlanIndexes(ct);
+        await CreateUserSubscriptionIndexes(ct);
+        await CreatePresenceIndexes(ct);
+        await CreateAuditIndexes(ct);
+    }
+
+    private async Task CreateUserIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<User>(CollectionNames.Users);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<User>(
+                Builders<User>.IndexKeys.Ascending(u => u.Email),
+                new CreateIndexOptions { Unique = true, Name = "idx_email_unique" }),
+            new CreateIndexModel<User>(
+                Builders<User>.IndexKeys.Ascending(u => u.Username),
+                new CreateIndexOptions { Unique = true, Name = "idx_username_unique" }),
+            new CreateIndexModel<User>(
+                Builders<User>.IndexKeys.Ascending(u => u.Role),
+                new CreateIndexOptions { Name = "idx_role" })
+        ], ct);
+    }
+
+    private async Task CreateRefreshTokenIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<RefreshToken>(CollectionNames.RefreshTokens);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<RefreshToken>(
+                Builders<RefreshToken>.IndexKeys.Ascending(t => t.Token),
+                new CreateIndexOptions { Unique = true, Name = "idx_token_unique" }),
+            new CreateIndexModel<RefreshToken>(
+                Builders<RefreshToken>.IndexKeys.Ascending(t => t.UserId),
+                new CreateIndexOptions { Name = "idx_userId" }),
+            new CreateIndexModel<RefreshToken>(
+                Builders<RefreshToken>.IndexKeys.Ascending(t => t.ExpiresAt),
+                new CreateIndexOptions { Name = "idx_expiresAt", ExpireAfter = TimeSpan.FromDays(30) })
+        ], ct);
+    }
+
+    private async Task CreateUserProfileIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<UserProfile>(
+                Builders<UserProfile>.IndexKeys.Ascending(p => p.UserId),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_unique" })
+        ], ct);
+    }
+
+    private async Task CreateUserGameProfileIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<UserGameProfile>(CollectionNames.UserGameProfiles);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<UserGameProfile>(
+                Builders<UserGameProfile>.IndexKeys
+                    .Ascending(p => p.UserId)
+                    .Ascending(p => p.GameId),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_gameId_unique" }),
+            new CreateIndexModel<UserGameProfile>(
+                Builders<UserGameProfile>.IndexKeys.Ascending(p => p.GameId),
+                new CreateIndexOptions { Name = "idx_gameId" }),
+            new CreateIndexModel<UserGameProfile>(
+                Builders<UserGameProfile>.IndexKeys.Ascending(p => p.LookingForTeam),
+                new CreateIndexOptions { Name = "idx_lookingForTeam" })
+        ], ct);
+    }
+
+    private async Task CreateGameIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Game>(CollectionNames.Games);
+
+        await DropLegacyIndexes(col, ["idx_steamAppId_unique"], ct);
+
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Game>(
+                Builders<Game>.IndexKeys.Ascending(g => g.RawgId),
+                new CreateIndexOptions { Unique = true, Name = "idx_rawgId_unique" }),
+            new CreateIndexModel<Game>(
+                Builders<Game>.IndexKeys.Ascending(g => g.NameNormalized),
+                new CreateIndexOptions { Name = "idx_nameNormalized" }),
+            new CreateIndexModel<Game>(
+                Builders<Game>.IndexKeys
+                    .Ascending(g => g.IsActive)
+                    .Ascending(g => g.NameNormalized),
+                new CreateIndexOptions { Name = "idx_active_nameNormalized" }),
+            new CreateIndexModel<Game>(
+                Builders<Game>.IndexKeys.Ascending(g => g.Genres),
+                new CreateIndexOptions { Name = "idx_genres" }),
+            new CreateIndexModel<Game>(
+                Builders<Game>.IndexKeys.Ascending(g => g.IsMultiplayer),
+                new CreateIndexOptions { Name = "idx_multiplayer" }),
+            new CreateIndexModel<Game>(
+                Builders<Game>.IndexKeys.Ascending(g => g.LastEnrichedAt),
+                new CreateIndexOptions { Name = "idx_lastEnrichedAt" })
+        ], ct);
+    }
+
+    private async Task CreateRoomIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Room>(CollectionNames.Rooms);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys
+                    .Ascending(r => r.GameId)
+                    .Ascending(r => r.Status),
+                new CreateIndexOptions { Name = "idx_gameId_status" }),
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys.Ascending(r => r.CreatorId),
+                new CreateIndexOptions { Name = "idx_creatorId" }),
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys.Ascending(r => r.Status),
+                new CreateIndexOptions { Name = "idx_status" }),
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys.Ascending(r => r.Region),
+                new CreateIndexOptions { Name = "idx_region" }),
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys
+                    .Ascending(r => r.IsPublic)
+                    .Ascending(r => r.Status),
+                new CreateIndexOptions { Name = "idx_isPublic_status" }),
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys.Ascending(r => r.Tags),
+                new CreateIndexOptions { Name = "idx_tags" }),
+            new CreateIndexModel<Room>(
+                Builders<Room>.IndexKeys.Ascending(r => r.Language),
+                new CreateIndexOptions { Name = "idx_language" })
+        ], ct);
+    }
+
+    private async Task CreateRoomMemberIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<RoomMember>(CollectionNames.RoomMembers);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<RoomMember>(
+                Builders<RoomMember>.IndexKeys
+                    .Ascending(m => m.RoomId)
+                    .Ascending(m => m.UserId),
+                new CreateIndexOptions { Unique = true, Name = "idx_roomId_userId_unique" }),
+            new CreateIndexModel<RoomMember>(
+                Builders<RoomMember>.IndexKeys.Ascending(m => m.UserId),
+                new CreateIndexOptions { Name = "idx_userId" })
+        ], ct);
+    }
+
+    private async Task CreateMessageIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Message>(CollectionNames.Messages);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Message>(
+                Builders<Message>.IndexKeys
+                    .Ascending(m => m.RoomId)
+                    .Descending(m => m.CreatedAt),
+                new CreateIndexOptions { Name = "idx_roomId_createdAt" }),
+            new CreateIndexModel<Message>(
+                Builders<Message>.IndexKeys.Ascending(m => m.SenderId),
+                new CreateIndexOptions { Name = "idx_senderId" })
+        ], ct);
+    }
+
+    private async Task CreateFriendshipIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Friendship>(CollectionNames.Friendships);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Friendship>(
+                Builders<Friendship>.IndexKeys
+                    .Ascending(f => f.RequesterId)
+                    .Ascending(f => f.AddresseeId),
+                new CreateIndexOptions { Unique = true, Name = "idx_requester_addressee_unique" }),
+            new CreateIndexModel<Friendship>(
+                Builders<Friendship>.IndexKeys.Ascending(f => f.AddresseeId),
+                new CreateIndexOptions { Name = "idx_addresseeId" }),
+            new CreateIndexModel<Friendship>(
+                Builders<Friendship>.IndexKeys.Ascending(f => f.Status),
+                new CreateIndexOptions { Name = "idx_status" })
+        ], ct);
+    }
+
+    private async Task CreateFavoriteIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Favorite>(CollectionNames.Favorites);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Favorite>(
+                Builders<Favorite>.IndexKeys
+                    .Ascending(f => f.UserId)
+                    .Ascending(f => f.FavoriteUserId),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_favoriteUserId_unique" }),
+            new CreateIndexModel<Favorite>(
+                Builders<Favorite>.IndexKeys.Ascending(f => f.UserId),
+                new CreateIndexOptions { Name = "idx_userId" })
+        ], ct);
+    }
+
+    private async Task CreateBlockIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Block>(CollectionNames.Blocks);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Block>(
+                Builders<Block>.IndexKeys
+                    .Ascending(b => b.BlockerId)
+                    .Ascending(b => b.BlockedUserId),
+                new CreateIndexOptions { Unique = true, Name = "idx_blocker_blocked_unique" }),
+            new CreateIndexModel<Block>(
+                Builders<Block>.IndexKeys.Ascending(b => b.BlockerId),
+                new CreateIndexOptions { Name = "idx_blockerId" })
+        ], ct);
+    }
+
+    private async Task CreateReportIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Report>(CollectionNames.Reports);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Report>(
+                Builders<Report>.IndexKeys.Ascending(r => r.Status),
+                new CreateIndexOptions { Name = "idx_status" }),
+            new CreateIndexModel<Report>(
+                Builders<Report>.IndexKeys.Ascending(r => r.ReportedUserId),
+                new CreateIndexOptions { Name = "idx_reportedUserId" }),
+            new CreateIndexModel<Report>(
+                Builders<Report>.IndexKeys.Ascending(r => r.ReporterId),
+                new CreateIndexOptions { Name = "idx_reporterId" })
+        ], ct);
+    }
+
+    private async Task CreateNotificationIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Notification>(CollectionNames.Notifications);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Notification>(
+                Builders<Notification>.IndexKeys
+                    .Ascending(n => n.UserId)
+                    .Descending(n => n.CreatedAt),
+                new CreateIndexOptions { Name = "idx_userId_createdAt" }),
+            new CreateIndexModel<Notification>(
+                Builders<Notification>.IndexKeys
+                    .Ascending(n => n.UserId)
+                    .Ascending(n => n.IsRead),
+                new CreateIndexOptions { Name = "idx_userId_isRead" })
+        ], ct);
+    }
+
+    private async Task CreateSubscriptionPlanIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<SubscriptionPlan>(CollectionNames.SubscriptionPlans);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<SubscriptionPlan>(
+                Builders<SubscriptionPlan>.IndexKeys.Ascending(p => p.Tier),
+                new CreateIndexOptions { Unique = true, Name = "idx_tier_unique" }),
+            new CreateIndexModel<SubscriptionPlan>(
+                Builders<SubscriptionPlan>.IndexKeys.Ascending(p => p.IsActive),
+                new CreateIndexOptions { Name = "idx_isActive" })
+        ], ct);
+    }
+
+    private async Task CreateUserSubscriptionIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<UserSubscription>(CollectionNames.UserSubscriptions);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<UserSubscription>(
+                Builders<UserSubscription>.IndexKeys.Ascending(s => s.UserId),
+                new CreateIndexOptions { Name = "idx_userId" }),
+            new CreateIndexModel<UserSubscription>(
+                Builders<UserSubscription>.IndexKeys
+                    .Ascending(s => s.UserId)
+                    .Ascending(s => s.Status),
+                new CreateIndexOptions { Name = "idx_userId_status" })
+        ], ct);
+    }
+
+    private async Task CreatePresenceIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Presence>(CollectionNames.Presences);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Presence>(
+                Builders<Presence>.IndexKeys.Ascending(p => p.UserId),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_unique" }),
+            new CreateIndexModel<Presence>(
+                Builders<Presence>.IndexKeys.Ascending(p => p.Status),
+                new CreateIndexOptions { Name = "idx_status" })
+        ], ct);
+    }
+
+    private async Task CreateAuditIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Audit>(CollectionNames.Audits);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Audit>(
+                Builders<Audit>.IndexKeys.Ascending(a => a.ActorId),
+                new CreateIndexOptions { Name = "idx_actorId" }),
+            new CreateIndexModel<Audit>(
+                Builders<Audit>.IndexKeys
+                    .Ascending(a => a.TargetType)
+                    .Ascending(a => a.TargetId),
+                new CreateIndexOptions { Name = "idx_targetType_targetId" }),
+            new CreateIndexModel<Audit>(
+                Builders<Audit>.IndexKeys.Descending(a => a.CreatedAt),
+                new CreateIndexOptions { Name = "idx_createdAt" })
+        ], ct);
+    }
+
+    private static async Task DropLegacyIndexes<T>(IMongoCollection<T> collection, string[] legacyNames, CancellationToken ct)
+    {
+        try
+        {
+            using var cursor = await collection.Indexes.ListAsync(ct);
+            var existing = await cursor.ToListAsync(ct);
+            var existingNames = existing.Select(i => i["name"].AsString).ToHashSet();
+
+            foreach (var name in legacyNames.Where(existingNames.Contains))
+                await collection.Indexes.DropOneAsync(name, ct);
+        }
+        catch (Exception)
+        {
+            // Collection may not exist yet
+        }
+    }
+}
