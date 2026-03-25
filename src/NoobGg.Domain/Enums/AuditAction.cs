@@ -6,7 +6,12 @@ public enum AuditAction
     UserUnbanned,
     UserRoleChanged,
     ReportReviewed,
+    ReportDismissed,
     RoomClosed,
     SubscriptionChanged,
-    GameCatalogSynced
+    GameCatalogSynced,
+    UserBlocked,
+    UserUnblocked,
+    UserMuted,
+    UserUnmuted
 }

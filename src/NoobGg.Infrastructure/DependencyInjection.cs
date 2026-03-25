@@ -7,6 +7,8 @@ using NoobGg.Infrastructure.Caching;
 using NoobGg.Infrastructure.Chat;
 using NoobGg.Infrastructure.Persistence;
 using NoobGg.Infrastructure.Rawg;
+using NoobGg.Infrastructure.Moderation;
+using NoobGg.Infrastructure.Subscriptions;
 using StackExchange.Redis;
 
 namespace NoobGg.Infrastructure;
@@ -20,6 +22,8 @@ public static class DependencyInjection
         services.AddAuthServices(configuration);
         services.AddSteamServices(configuration);
         services.AddChatServices();
+        services.AddSubscriptionServices();
+        services.AddModerationServices();
 
         return services;
     }
@@ -57,6 +61,18 @@ public static class DependencyInjection
     private static IServiceCollection AddChatServices(this IServiceCollection services)
     {
         services.AddSingleton<IChatPresenceService, ChatPresenceService>();
+        return services;
+    }
+
+    private static IServiceCollection AddSubscriptionServices(this IServiceCollection services)
+    {
+        services.AddScoped<IEntitlementService, EntitlementService>();
+        return services;
+    }
+
+    private static IServiceCollection AddModerationServices(this IServiceCollection services)
+    {
+        services.AddScoped<IBlockService, BlockService>();
         return services;
     }
 

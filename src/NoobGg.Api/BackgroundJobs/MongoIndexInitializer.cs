@@ -200,7 +200,13 @@ public class MongoIndexInitializer : IHostedService
                 new CreateIndexOptions { Name = "idx_roomId_createdAt" }),
             new CreateIndexModel<Message>(
                 Builders<Message>.IndexKeys.Ascending(m => m.SenderId),
-                new CreateIndexOptions { Name = "idx_senderId" })
+                new CreateIndexOptions { Name = "idx_senderId" }),
+            new CreateIndexModel<Message>(
+                Builders<Message>.IndexKeys
+                    .Ascending(m => m.RoomId)
+                    .Ascending(m => m.IsDeleted)
+                    .Descending(m => m.CreatedAt),
+                new CreateIndexOptions { Name = "idx_roomId_isDeleted_createdAt" })
         ], ct);
     }
 
@@ -248,7 +254,10 @@ public class MongoIndexInitializer : IHostedService
                 new CreateIndexOptions { Unique = true, Name = "idx_blocker_blocked_unique" }),
             new CreateIndexModel<Block>(
                 Builders<Block>.IndexKeys.Ascending(b => b.BlockerId),
-                new CreateIndexOptions { Name = "idx_blockerId" })
+                new CreateIndexOptions { Name = "idx_blockerId" }),
+            new CreateIndexModel<Block>(
+                Builders<Block>.IndexKeys.Ascending(b => b.BlockedUserId),
+                new CreateIndexOptions { Name = "idx_blockedUserId" })
         ], ct);
     }
 
@@ -264,7 +273,13 @@ public class MongoIndexInitializer : IHostedService
                 new CreateIndexOptions { Name = "idx_reportedUserId" }),
             new CreateIndexModel<Report>(
                 Builders<Report>.IndexKeys.Ascending(r => r.ReporterId),
-                new CreateIndexOptions { Name = "idx_reporterId" })
+                new CreateIndexOptions { Name = "idx_reporterId" }),
+            new CreateIndexModel<Report>(
+                Builders<Report>.IndexKeys
+                    .Ascending(r => r.TargetType)
+                    .Ascending(r => r.Status)
+                    .Descending(r => r.CreatedAt),
+                new CreateIndexOptions { Name = "idx_targetType_status_createdAt" })
         ], ct);
     }
 
@@ -309,7 +324,12 @@ public class MongoIndexInitializer : IHostedService
                 Builders<UserSubscription>.IndexKeys
                     .Ascending(s => s.UserId)
                     .Ascending(s => s.Status),
-                new CreateIndexOptions { Name = "idx_userId_status" })
+                new CreateIndexOptions { Name = "idx_userId_status" }),
+            new CreateIndexModel<UserSubscription>(
+                Builders<UserSubscription>.IndexKeys
+                    .Ascending(s => s.UserId)
+                    .Ascending(s => s.Tier),
+                new CreateIndexOptions { Name = "idx_userId_tier" })
         ], ct);
     }
 
