@@ -4,6 +4,7 @@ using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Features.Games.Services;
 using NoobGg.Infrastructure.Auth;
 using NoobGg.Infrastructure.Caching;
+using NoobGg.Infrastructure.Chat;
 using NoobGg.Infrastructure.Persistence;
 using NoobGg.Infrastructure.Rawg;
 using StackExchange.Redis;
@@ -18,6 +19,7 @@ public static class DependencyInjection
         services.AddRedisCache(configuration);
         services.AddAuthServices(configuration);
         services.AddSteamServices(configuration);
+        services.AddChatServices();
 
         return services;
     }
@@ -49,6 +51,12 @@ public static class DependencyInjection
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
+        return services;
+    }
+
+    private static IServiceCollection AddChatServices(this IServiceCollection services)
+    {
+        services.AddSingleton<IChatPresenceService, ChatPresenceService>();
         return services;
     }
 
