@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
@@ -9,37 +10,42 @@ using NoobGg.Domain.Enums;
 
 namespace NoobGg.Application.Features.Auth.Commands.Register;
 
-public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<AuthResponse>>
+public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
 {
     private readonly IMongoContext _mongoContext;
     private readonly IPasswordHasher _passwordHasher;
-    private readonly IJwtTokenService _jwtTokenService;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<RegisterCommandHandler> _logger;
 
     public RegisterCommandHandler(
         IMongoContext mongoContext,
         IPasswordHasher passwordHasher,
-        IJwtTokenService jwtTokenService)
+        IEmailService emailService,
+        ILogger<RegisterCommandHandler> logger)
     {
         _mongoContext = mongoContext;
         _passwordHasher = passwordHasher;
-        _jwtTokenService = jwtTokenService;
+        _emailService = emailService;
+        _logger = logger;
     }
 
-    public async Task<Result<AuthResponse>> Handle(RegisterCommand request, CancellationToken ct)
+    public async Task<Result<RegisterResponse>> Handle(RegisterCommand request, CancellationToken ct)
     {
         var users = _mongoContext.GetCollection<User>(CollectionNames.Users);
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var normalizedUsername = request.Username.Trim().ToLowerInvariant();
 
-        var emailFilter = Builders<User>.Filter.Eq(u => u.Email, normalizedEmail);
-        var existingEmail = await users.Find(emailFilter).FirstOrDefaultAsync(ct);
+        var existingEmail = await users
+            .Find(Builders<User>.Filter.Eq(u => u.Email, normalizedEmail))
+            .FirstOrDefaultAsync(ct);
         if (existingEmail is not null)
-            return Result<AuthResponse>.Fail("Email is already registered", 409);
+            return Result<RegisterResponse>.Fail("Email is already registered", 409);
 
-        var usernameFilter = Builders<User>.Filter.Eq(u => u.Username, normalizedUsername);
-        var existingUsername = await users.Find(usernameFilter).FirstOrDefaultAsync(ct);
+        var existingUsername = await users
+            .Find(Builders<User>.Filter.Eq(u => u.Username, normalizedUsername))
+            .FirstOrDefaultAsync(ct);
         if (existingUsername is not null)
-            return Result<AuthResponse>.Fail("Username is already taken", 409);
+            return Result<RegisterResponse>.Fail("Username is already taken", 409);
 
         var user = new User
         {
@@ -47,7 +53,6 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
             Username = normalizedUsername,
             PasswordHash = _passwordHasher.Hash(request.Password),
             Role = UserRole.User,
-            LastLoginAt = DateTime.UtcNow
         };
         await users.InsertOneAsync(user, cancellationToken: ct);
 
@@ -59,41 +64,36 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Au
         };
         await userProfiles.InsertOneAsync(profile, cancellationToken: ct);
 
-        var authResponse = await GenerateAuthTokens(user, request.IpAddress, ct);
-        return Result<AuthResponse>.Created(authResponse);
+        await SendVerificationCodeAsync(user, ct);
+
+        return Result<RegisterResponse>.Created(new RegisterResponse
+        {
+            Email = user.Email,
+            Message = "A verification code has been sent to your email address"
+        });
     }
 
-    private async Task<AuthResponse> GenerateAuthTokens(User user, string? ipAddress, CancellationToken ct)
+    private async Task SendVerificationCodeAsync(User user, CancellationToken ct)
     {
-        var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.Username, user.Role.ToString());
-        var refreshTokenString = _jwtTokenService.GenerateRefreshToken();
-
-        var refreshTokens = _mongoContext.GetCollection<Domain.Entities.RefreshToken>(CollectionNames.RefreshTokens);
-        var refreshToken = new Domain.Entities.RefreshToken
+        try
         {
-            UserId = user.Id,
-            Token = refreshTokenString,
-            ExpiresAt = DateTime.UtcNow.AddDays(_jwtTokenService.RefreshTokenExpirationDays),
-            CreatedByIp = ipAddress
-        };
-        await refreshTokens.InsertOneAsync(refreshToken, cancellationToken: ct);
+            var tokens = _mongoContext.GetCollection<EmailVerificationToken>(CollectionNames.EmailVerificationTokens);
 
-        return new AuthResponse
+            var code = Random.Shared.Next(100_000, 999_999).ToString();
+
+            var verificationToken = new EmailVerificationToken
+            {
+                UserId = user.Id,
+                Token = code,
+                ExpiresAt = DateTime.UtcNow.AddHours(24)
+            };
+            await tokens.InsertOneAsync(verificationToken, cancellationToken: ct);
+
+            await _emailService.SendVerificationEmailAsync(user.Email, user.Username, code, ct);
+        }
+        catch (Exception ex)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshTokenString,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtTokenService.AccessTokenExpirationMinutes),
-            User = MapToUserResponse(user)
-        };
+            _logger.LogError(ex, "Failed to send verification code to {Email}. User was still created", user.Email);
+        }
     }
-
-    private static UserResponse MapToUserResponse(User user) => new()
-    {
-        Id = user.Id,
-        Email = user.Email,
-        Username = user.Username,
-        Role = user.Role.ToString(),
-        IsEmailVerified = user.IsEmailVerified,
-        CreatedAt = user.CreatedAt
-    };
 }

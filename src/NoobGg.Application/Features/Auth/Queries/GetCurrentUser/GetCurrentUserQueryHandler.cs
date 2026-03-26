@@ -37,6 +37,7 @@ public class GetCurrentUserQueryHandler : IRequestHandler<GetCurrentUserQuery, R
             Username = user.Username,
             Role = user.Role.ToString(),
             IsEmailVerified = user.IsEmailVerified,
+            IsProfileComplete = user.IsProfileComplete,
             CreatedAt = user.CreatedAt
         });
     }

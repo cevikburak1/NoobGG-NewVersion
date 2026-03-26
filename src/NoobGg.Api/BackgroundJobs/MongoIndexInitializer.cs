@@ -50,6 +50,9 @@ public class MongoIndexInitializer : IHostedService
         await CreateUserSubscriptionIndexes(ct);
         await CreatePresenceIndexes(ct);
         await CreateAuditIndexes(ct);
+        await CreateEmailVerificationTokenIndexes(ct);
+        await CreateConversationIndexes(ct);
+        await CreateDirectMessageIndexes(ct);
     }
 
     private async Task CreateUserIndexes(CancellationToken ct)
@@ -361,6 +364,55 @@ public class MongoIndexInitializer : IHostedService
             new CreateIndexModel<Audit>(
                 Builders<Audit>.IndexKeys.Descending(a => a.CreatedAt),
                 new CreateIndexOptions { Name = "idx_createdAt" })
+        ], ct);
+    }
+
+    private async Task CreateEmailVerificationTokenIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<EmailVerificationToken>(CollectionNames.EmailVerificationTokens);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<EmailVerificationToken>(
+                Builders<EmailVerificationToken>.IndexKeys.Ascending(t => t.Token),
+                new CreateIndexOptions { Unique = true, Name = "idx_token_unique" }),
+            new CreateIndexModel<EmailVerificationToken>(
+                Builders<EmailVerificationToken>.IndexKeys.Ascending(t => t.UserId),
+                new CreateIndexOptions { Name = "idx_userId" }),
+            new CreateIndexModel<EmailVerificationToken>(
+                Builders<EmailVerificationToken>.IndexKeys.Ascending(t => t.ExpiresAt),
+                new CreateIndexOptions { Name = "idx_expiresAt", ExpireAfter = TimeSpan.FromDays(7) })
+        ], ct);
+    }
+
+    private async Task CreateConversationIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Conversation>(CollectionNames.Conversations);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Conversation>(
+                Builders<Conversation>.IndexKeys
+                    .Ascending(c => c.Participant1Id)
+                    .Ascending(c => c.Participant2Id),
+                new CreateIndexOptions { Unique = true, Name = "idx_participants_unique" }),
+            new CreateIndexModel<Conversation>(
+                Builders<Conversation>.IndexKeys.Ascending(c => c.Participant2Id),
+                new CreateIndexOptions { Name = "idx_participant2Id" }),
+            new CreateIndexModel<Conversation>(
+                Builders<Conversation>.IndexKeys.Descending(c => c.LastMessageAt),
+                new CreateIndexOptions { Name = "idx_lastMessageAt" })
+        ], ct);
+    }
+
+    private async Task CreateDirectMessageIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<DirectMessage>(CollectionNames.DirectMessages);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<DirectMessage>(
+                Builders<DirectMessage>.IndexKeys
+                    .Ascending(m => m.ConversationId)
+                    .Descending(m => m.CreatedAt),
+                new CreateIndexOptions { Name = "idx_conversationId_createdAt" }),
+            new CreateIndexModel<DirectMessage>(
+                Builders<DirectMessage>.IndexKeys.Ascending(m => m.SenderId),
+                new CreateIndexOptions { Name = "idx_senderId" })
         ], ct);
     }
 

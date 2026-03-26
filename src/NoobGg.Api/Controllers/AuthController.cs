@@ -4,6 +4,8 @@ using NoobGg.Application.Features.Auth.Commands.Login;
 using NoobGg.Application.Features.Auth.Commands.Logout;
 using NoobGg.Application.Features.Auth.Commands.RefreshToken;
 using NoobGg.Application.Features.Auth.Commands.Register;
+using NoobGg.Application.Features.Auth.Commands.ResendVerificationEmail;
+using NoobGg.Application.Features.Auth.Commands.VerifyEmail;
 using NoobGg.Application.Features.Auth.Queries.GetCurrentUser;
 
 namespace NoobGg.Api.Controllers;
@@ -14,7 +16,7 @@ public class AuthController : ApiControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterCommand command)
     {
-        var result = await Mediator.Send(command with { IpAddress = ClientIpAddress });
+        var result = await Mediator.Send(command);
         return HandleResult(result);
     }
 
@@ -45,6 +47,20 @@ public class AuthController : ApiControllerBase
     public async Task<IActionResult> GetMe()
     {
         var result = await Mediator.Send(new GetCurrentUserQuery());
+        return HandleResult(result);
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailCommand command)
+    {
+        var result = await Mediator.Send(command with { IpAddress = ClientIpAddress });
+        return HandleResult(result);
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationEmailCommand command)
+    {
+        var result = await Mediator.Send(command);
         return HandleResult(result);
     }
 }

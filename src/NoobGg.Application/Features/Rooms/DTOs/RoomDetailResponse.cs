@@ -7,6 +7,8 @@ public record RoomDetailResponse(
     string Title,
     string? Description,
     string GameId,
+    string? GameName,
+    string? GameImageUrl,
     string CreatorId,
     bool IsPublic,
     int MaxMembers,

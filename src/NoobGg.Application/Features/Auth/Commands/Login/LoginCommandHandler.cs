@@ -40,6 +40,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         if (!_passwordHasher.Verify(request.Password, user.PasswordHash))
             return Result<AuthResponse>.Unauthorized("Invalid credentials");
 
+        if (!user.IsEmailVerified)
+            return Result<AuthResponse>.Fail("Please verify your email address before logging in", 403);
+
         if (user.IsBanned)
             return Result<AuthResponse>.Fail($"Account is banned: {user.BanReason ?? "No reason provided"}", 403);
 
@@ -77,6 +80,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         Username = user.Username,
         Role = user.Role.ToString(),
         IsEmailVerified = user.IsEmailVerified,
+        IsProfileComplete = user.IsProfileComplete,
         CreatedAt = user.CreatedAt
     };
 }

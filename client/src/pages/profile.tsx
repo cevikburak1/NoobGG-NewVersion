@@ -1,0 +1,353 @@
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useProfile } from '@/features/profile/hooks';
+import { useBlockUser, useUnblockUser } from '@/features/blocks/hooks';
+import {
+  Button,
+  Badge,
+  Card,
+  AnimatedPage,
+  Spinner,
+  ProgressBar,
+  staggerContainer,
+  staggerItem,
+} from '@/components/ui';
+import { UserAvatar } from '@/components/common/userAvatar';
+
+export default function ProfilePage() {
+  const { userId } = useParams<{ userId: string }>();
+  const navigate = useNavigate();
+  const blockUser = useBlockUser();
+  const unblockUser = useUnblockUser();
+
+  const { data: profile, isLoading, refetch } = useProfile(userId);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <AnimatedPage>
+        <div className="flex flex-col items-center py-32 text-center">
+          <div className="text-5xl">👻</div>
+          <h2 className="mt-4 text-xl font-bold text-foreground">Profile not found</h2>
+          <p className="mt-2 text-foreground-muted">
+            This user doesn&apos;t exist or their profile is private.
+          </p>
+          <Link to="/discover" className="mt-4">
+            <Button variant="outline">Discover Players</Button>
+          </Link>
+        </div>
+      </AnimatedPage>
+    );
+  }
+
+  const handleBlock = async () => {
+    if (!userId) return;
+    await blockUser.mutateAsync(userId);
+    refetch();
+  };
+
+  const handleUnblock = async () => {
+    if (!userId) return;
+    await unblockUser.mutateAsync(userId);
+    refetch();
+  };
+
+  const handleSendMessage = () => {
+    navigate(`/messages?user=${userId}`);
+  };
+
+  return (
+    <AnimatedPage>
+      <div className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border border-border bg-surface"
+        >
+          <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 sm:h-40">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_var(--color-primary)_0%,_transparent_60%)] opacity-20" />
+          </div>
+
+          <div className="relative px-6 pb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, type: 'spring', bounce: 0.3 }}
+                className="-mt-12 sm:-mt-16"
+              >
+                <div className="rounded-full border-4 border-surface p-0.5">
+                  <UserAvatar
+                    username={profile.username}
+                    avatarUrl={profile.avatarUrl}
+                    size="lg"
+                    className="!h-24 !w-24 !text-2xl sm:!h-28 sm:!w-28"
+                  />
+                </div>
+              </motion.div>
+
+              <div className="flex-1">
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-foreground">
+                      {profile.displayName || profile.username}
+                    </h1>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        profile.isOnline
+                          ? 'bg-green-500/10 text-green-500'
+                          : 'bg-foreground-subtle/10 text-foreground-subtle'
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          profile.isOnline ? 'bg-green-500 animate-pulse' : 'bg-foreground-subtle'
+                        }`}
+                      />
+                      {profile.isOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+                  {profile.displayName && (
+                    <p className="text-sm text-foreground-muted">@{profile.username}</p>
+                  )}
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    {profile.region && <Badge>{profile.region}</Badge>}
+                    {profile.experienceLevel && (
+                      <Badge variant="primary">{profile.experienceLevel}</Badge>
+                    )}
+                    {profile.country && <Badge variant="accent">{profile.country}</Badge>}
+                  </div>
+                </motion.div>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="flex gap-2"
+              >
+                {profile.isOwnProfile ? (
+                  <>
+                    <Link to="/profile/edit">
+                      <Button variant="outline" size="sm">
+                        Edit Profile
+                      </Button>
+                    </Link>
+                    <Link to="/profile/games">
+                      <Button variant="ghost" size="sm">
+                        Game Profiles
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    {!profile.isBlockedByThem && (
+                      <Button onClick={handleSendMessage} className="gap-2">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-2.41-.5v.03a.75.75 0 01-.75.75h-.03A8.256 8.256 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+                        </svg>
+                        Send Message
+                      </Button>
+                    )}
+                    {profile.isBlocked ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnblock}
+                        isLoading={unblockUser.isPending}
+                      >
+                        Unblock
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={handleBlock}
+                        isLoading={blockUser.isPending}
+                      >
+                        Block
+                      </Button>
+                    )}
+                  </>
+                )}
+              </motion.div>
+            </div>
+
+            {profile.isBlockedByThem && !profile.isOwnProfile && (
+              <div className="mt-4 rounded-lg bg-danger/10 border border-danger/20 p-3 text-sm text-danger">
+                This user has blocked you. You cannot send messages or interact with them.
+              </div>
+            )}
+
+            {profile.bio && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35 }}
+                className="mt-4 max-w-2xl text-sm leading-relaxed text-foreground-muted"
+              >
+                {profile.bio}
+              </motion.p>
+            )}
+
+            {profile.playSchedule && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="mt-3 flex items-center gap-2 text-sm text-foreground-subtle"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                {profile.playSchedule}
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-4"
+        >
+          {[
+            { label: 'Rooms Joined', value: profile.stats.roomsJoined, icon: '🚪' },
+            { label: 'Rooms Created', value: profile.stats.roomsCreated, icon: '🏠' },
+            { label: 'Games', value: profile.stats.gamesPlayed, icon: '🎮' },
+            {
+              label: 'Since',
+              value: new Date(profile.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                year: 'numeric',
+              }),
+              icon: '📅',
+            },
+          ].map((stat) => (
+            <motion.div
+              key={stat.label}
+              variants={staggerItem}
+              whileHover={{ y: -2, scale: 1.02 }}
+              className="rounded-xl border border-border bg-surface p-4 text-center"
+            >
+              <div className="text-xl">{stat.icon}</div>
+              <p className="mt-1 text-lg font-bold text-foreground">{stat.value}</p>
+              <p className="text-xs text-foreground-muted">{stat.label}</p>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-foreground">Game Profiles</h2>
+            {profile.isOwnProfile && (
+              <Link to="/profile/games">
+                <Button variant="outline" size="sm">
+                  Manage Games
+                </Button>
+              </Link>
+            )}
+          </div>
+          {profile.games.length > 0 ? (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="grid gap-4 sm:grid-cols-2"
+            >
+              {profile.games.map((gp) => (
+                <motion.div key={gp.id} variants={staggerItem}>
+                  <Card className="group hover:border-primary/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {gp.gameImageUrl ? (
+                        <img
+                          src={gp.gameImageUrl}
+                          alt={gp.gameName}
+                          className="w-12 h-12 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded bg-border flex items-center justify-center text-foreground-muted">
+                          🎮
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-foreground truncate">{gp.gameName}</h3>
+                        {gp.inGameName && (
+                          <p className="text-sm text-foreground-muted">IGN: {gp.inGameName}</p>
+                        )}
+                      </div>
+                      {gp.lookingForTeam && <Badge variant="accent">LFT</Badge>}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {gp.rank && <Badge variant="primary">{gp.rank}</Badge>}
+                      <Badge>{gp.experienceLevel}</Badge>
+                      <Badge>{gp.region}</Badge>
+                      <Badge>{gp.communicationPreference}</Badge>
+                      {gp.hoursPlayed != null && <Badge>{gp.hoursPlayed}h</Badge>}
+                    </div>
+                    {gp.hoursPlayed != null && (
+                      <div className="mt-3">
+                        <ProgressBar
+                          value={Math.min(gp.hoursPlayed, 2000)}
+                          max={2000}
+                          variant="accent"
+                          size="sm"
+                        />
+                        <p className="mt-1 text-xs text-foreground-subtle">
+                          {gp.hoursPlayed} / 2000h milestone
+                        </p>
+                      </div>
+                    )}
+                    {gp.note && (
+                      <p className="mt-2 text-xs text-foreground-muted italic">{gp.note}</p>
+                    )}
+                  </Card>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <Card className="text-center">
+              <div className="py-8">
+                <div className="text-4xl">🎮</div>
+                <p className="mt-2 text-foreground-muted">No game profiles yet</p>
+                {profile.isOwnProfile && (
+                  <Link to="/profile/games" className="mt-3 inline-block">
+                    <Button variant="outline" size="sm">
+                      Add Game Profile
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </Card>
+          )}
+        </motion.div>
+      </div>
+    </AnimatedPage>
+  );
+}

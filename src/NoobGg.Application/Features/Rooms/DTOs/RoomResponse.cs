@@ -4,6 +4,8 @@ public record RoomResponse(
     string Id,
     string Title,
     string GameId,
+    string? GameName,
+    string? GameImageUrl,
     string CreatorId,
     bool IsPublic,
     int MaxMembers,

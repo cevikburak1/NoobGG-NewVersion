@@ -7,5 +7,6 @@ public record UserResponse
     public string Username { get; init; } = string.Empty;
     public string Role { get; init; } = string.Empty;
     public bool IsEmailVerified { get; init; }
+    public bool IsProfileComplete { get; init; }
     public DateTime CreatedAt { get; init; }
 }

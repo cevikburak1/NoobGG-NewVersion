@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using NoobGg.Api.BackgroundJobs;
 using NoobGg.Api.Extensions;
 using NoobGg.Api.Hubs;
@@ -39,7 +40,11 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApiServices(builder.Configuration);
 builder.Services.AddNoobGgCors(builder.Configuration);
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddHostedService<DatabaseMigrationRunner>();
 builder.Services.AddHostedService<MongoIndexInitializer>();
 builder.Services.AddHostedService<PlanSeedInitializer>();
@@ -69,6 +74,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<RoomHub>("/hubs/room");
+app.MapHub<DirectMessageHub>("/hubs/dm");
 
 Log.Information("NoobGg API starting up");
 app.Run();

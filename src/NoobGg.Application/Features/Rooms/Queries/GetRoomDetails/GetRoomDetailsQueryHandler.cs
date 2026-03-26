@@ -41,11 +41,16 @@ public class GetRoomDetailsQueryHandler : IRequestHandler<GetRoomDetailsQuery, R
             m.Role.ToString(),
             m.JoinedAt)).ToList();
 
+        var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
+        var game = await games.Find(g => g.Id == room.GameId).FirstOrDefaultAsync(ct);
+
         var response = new RoomDetailResponse(
             room.Id,
             room.Title,
             room.Description,
             room.GameId,
+            game?.Name,
+            game?.BackgroundImageUrl,
             room.CreatorId,
             room.IsPublic,
             room.MaxMembers,

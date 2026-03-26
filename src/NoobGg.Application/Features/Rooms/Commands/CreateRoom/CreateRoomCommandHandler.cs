@@ -30,10 +30,10 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
         var roomMembers = _mongoContext.GetCollection<RoomMember>(CollectionNames.RoomMembers);
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
 
-        var gameExists = await games.Find(g => g.Id == request.GameId && g.IsActive)
-            .AnyAsync(ct);
+        var game = await games.Find(g => g.Id == request.GameId && g.IsActive)
+            .FirstOrDefaultAsync(ct);
 
-        if (!gameExists)
+        if (game is null)
             return Result<RoomDetailResponse>.Fail("Game not found or inactive", 404);
 
         var hasOpenRoom = await rooms.Find(r =>
@@ -86,6 +86,8 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
             room.Title,
             room.Description,
             room.GameId,
+            game.Name,
+            game.BackgroundImageUrl,
             room.CreatorId,
             room.IsPublic,
             room.MaxMembers,

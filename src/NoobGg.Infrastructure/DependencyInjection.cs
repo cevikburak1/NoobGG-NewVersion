@@ -5,9 +5,11 @@ using NoobGg.Application.Features.Games.Services;
 using NoobGg.Infrastructure.Auth;
 using NoobGg.Infrastructure.Caching;
 using NoobGg.Infrastructure.Chat;
+using NoobGg.Infrastructure.Email;
 using NoobGg.Infrastructure.Persistence;
 using NoobGg.Infrastructure.Rawg;
 using NoobGg.Infrastructure.Moderation;
+using NoobGg.Infrastructure.Services;
 using NoobGg.Infrastructure.Subscriptions;
 using StackExchange.Redis;
 
@@ -24,6 +26,7 @@ public static class DependencyInjection
         services.AddChatServices();
         services.AddSubscriptionServices();
         services.AddModerationServices();
+        services.AddEmailServices(configuration);
 
         return services;
     }
@@ -61,6 +64,7 @@ public static class DependencyInjection
     private static IServiceCollection AddChatServices(this IServiceCollection services)
     {
         services.AddSingleton<IChatPresenceService, ChatPresenceService>();
+        services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
         return services;
     }
 
@@ -73,6 +77,13 @@ public static class DependencyInjection
     private static IServiceCollection AddModerationServices(this IServiceCollection services)
     {
         services.AddScoped<IBlockService, BlockService>();
+        return services;
+    }
+
+    private static IServiceCollection AddEmailServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+        services.AddTransient<IEmailService, SmtpEmailService>();
         return services;
     }
 

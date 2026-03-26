@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NoobGg.Application.Features.Games.Queries.BrowseGames;
 using NoobGg.Application.Features.Games.Queries.SearchGames;
 
 namespace NoobGg.Api.Controllers;
@@ -6,10 +7,29 @@ namespace NoobGg.Api.Controllers;
 [Route("api/games")]
 public class GamesController : ApiControllerBase
 {
-    /// <summary>
-    /// Search games for frontend autocomplete.
-    /// GET /api/games/search?q=counter&amp;limit=10&amp;multiplayer=true&amp;genre=Action
-    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> Browse(
+        [FromQuery] string? search = null,
+        [FromQuery] string? genre = null,
+        [FromQuery] bool? multiplayer = null,
+        [FromQuery] bool? freeToPlay = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12)
+    {
+        var query = new BrowseGamesQuery
+        {
+            Search = search,
+            Genre = genre,
+            IsMultiplayer = multiplayer,
+            IsFreeToPlay = freeToPlay,
+            Page = page,
+            PageSize = pageSize
+        };
+
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
     [HttpGet("search")]
     public async Task<IActionResult> Search(
         [FromQuery(Name = "q")] string searchTerm,

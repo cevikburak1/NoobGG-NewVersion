@@ -19,4 +19,7 @@ public static class CollectionNames
     public const string UserSubscriptions = "userSubscriptions";
     public const string Presences = "presences";
     public const string Audits = "audits";
+    public const string EmailVerificationTokens = "emailVerificationTokens";
+    public const string Conversations = "conversations";
+    public const string DirectMessages = "directMessages";
 }

@@ -54,19 +54,30 @@ public class GetRoomsQueryHandler : IRequestHandler<GetRoomsQuery, Result<PagedR
             .Limit(request.PageSize)
             .ToListAsync(ct);
 
-        var items = roomDocs.Select(r => new RoomResponse(
-            r.Id,
-            r.Title,
-            r.GameId,
-            r.CreatorId,
-            r.IsPublic,
-            r.MaxMembers,
-            r.CurrentMemberCount,
-            r.Region.ToString(),
-            r.Language.ToString(),
-            r.Tags,
-            r.Status.ToString(),
-            r.CreatedAt)).ToList();
+        var gameIds = roomDocs.Select(r => r.GameId).Distinct().ToList();
+        var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
+        var gameDocs = await games.Find(Builders<Game>.Filter.In(g => g.Id, gameIds)).ToListAsync(ct);
+        var gameMap = gameDocs.ToDictionary(g => g.Id, g => (g.Name, g.BackgroundImageUrl));
+
+        var items = roomDocs.Select(r =>
+        {
+            gameMap.TryGetValue(r.GameId, out var game);
+            return new RoomResponse(
+                r.Id,
+                r.Title,
+                r.GameId,
+                game.Name,
+                game.BackgroundImageUrl,
+                r.CreatorId,
+                r.IsPublic,
+                r.MaxMembers,
+                r.CurrentMemberCount,
+                r.Region.ToString(),
+                r.Language.ToString(),
+                r.Tags,
+                r.Status.ToString(),
+                r.CreatedAt);
+        }).ToList();
 
         var result = new PagedResult<RoomResponse>
         {
