@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NoobGg.Application.Features.Games.Queries.BrowseGames;
+using NoobGg.Application.Features.Games.Queries.GetGameDetail;
 using NoobGg.Application.Features.Games.Queries.SearchGames;
 
 namespace NoobGg.Api.Controllers;
@@ -7,11 +8,21 @@ namespace NoobGg.Api.Controllers;
 [Route("api/games")]
 public class GamesController : ApiControllerBase
 {
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(string id)
+    {
+        var result = await Mediator.Send(new GetGameDetailQuery { GameId = id });
+        return HandleResult(result);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Browse(
         [FromQuery] string? search = null,
         [FromQuery] string? genre = null,
+        [FromQuery] string? platform = null,
         [FromQuery] bool? multiplayer = null,
+        [FromQuery] bool? coop = null,
+        [FromQuery] bool? pvp = null,
         [FromQuery] bool? freeToPlay = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
@@ -20,7 +31,10 @@ public class GamesController : ApiControllerBase
         {
             Search = search,
             Genre = genre,
+            Platform = platform,
             IsMultiplayer = multiplayer,
+            IsCoop = coop,
+            IsPvp = pvp,
             IsFreeToPlay = freeToPlay,
             Page = page,
             PageSize = pageSize

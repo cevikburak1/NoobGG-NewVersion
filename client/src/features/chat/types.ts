@@ -45,3 +45,15 @@ export interface MessageEditedEvent {
   content: string;
   editedAt: string;
 }
+
+export interface RoomMemberEvent {
+  roomId: string;
+  userId: string;
+  username: string;
+  timestamp: string;
+}
+
+export interface RoomClosedEvent {
+  roomId: string;
+  timestamp: string;
+}

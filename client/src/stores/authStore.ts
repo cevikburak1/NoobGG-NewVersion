@@ -4,6 +4,21 @@ import { registerAuthAccessor } from '@/lib/api';
 
 const REFRESH_TOKEN_KEY = 'noobgg_refresh_token';
 
+function getPersistedToken(): string | null {
+  return sessionStorage.getItem(REFRESH_TOKEN_KEY)
+    ?? localStorage.getItem(REFRESH_TOKEN_KEY);
+}
+
+function persistToken(token: string) {
+  sessionStorage.setItem(REFRESH_TOKEN_KEY, token);
+  localStorage.setItem(REFRESH_TOKEN_KEY, token);
+}
+
+function clearToken() {
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
 interface AuthState {
   user: UserResponse | null;
   accessToken: string | null;
@@ -21,23 +36,23 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   accessToken: null,
-  refreshToken: localStorage.getItem(REFRESH_TOKEN_KEY),
+  refreshToken: getPersistedToken(),
   isInitialized: false,
 
   isAuthenticated: () => get().accessToken !== null && get().user !== null,
 
   login: (user, accessToken, refreshToken) => {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    persistToken(refreshToken);
     set({ user, accessToken, refreshToken });
   },
 
   logout: () => {
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    clearToken();
     set({ user: null, accessToken: null, refreshToken: null });
   },
 
   setTokens: (accessToken, refreshToken) => {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    persistToken(refreshToken);
     set({ accessToken, refreshToken });
   },
 

@@ -1,10 +1,31 @@
+export type NotificationType =
+  | 'FriendRequest'
+  | 'FriendAccepted'
+  | 'RoomInvite'
+  | 'RoomJoined'
+  | 'RoomLeft'
+  | 'RoomClosed'
+  | 'DirectMessage'
+  | 'ReportResolved'
+  | 'SubscriptionChanged'
+  | 'SystemMessage';
+
 export interface NotificationResponse {
   id: string;
-  userId: string;
-  type: string;
+  type: NotificationType;
   title: string;
-  message: string;
+  body: string;
+  data: Record<string, string> | null;
   isRead: boolean;
-  relatedEntityId: string | null;
+  readAt: string | null;
   createdAt: string;
+}
+
+export interface NotificationPagedResult {
+  items: NotificationResponse[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }

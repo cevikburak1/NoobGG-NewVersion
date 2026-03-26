@@ -12,6 +12,7 @@ import DiscoverPage from '@/pages/discover';
 import ProfilePage from '@/pages/profile';
 import EditProfilePage from '@/pages/editProfile';
 import GameProfilesPage from '@/pages/gameProfiles';
+import GameDetailPage from '@/pages/gameDetail';
 import RoomListPage from '@/pages/roomList';
 import RoomDetailPage from '@/pages/roomDetail';
 import SubscriptionsPage from '@/pages/subscriptions';
@@ -70,6 +71,16 @@ const routes: RouteObject[] = [
         ),
       },
       { path: '/subscriptions', element: <SubscriptionsPage /> },
+      {
+        path: '/games/:gameId',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <GameDetailPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
       {
         path: '/discover',
         element: (

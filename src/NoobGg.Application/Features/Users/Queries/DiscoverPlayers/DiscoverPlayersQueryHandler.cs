@@ -93,6 +93,12 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
 
             var isLft = userGameProfiles?.Any(gp => gp.LookingForTeam) ?? false;
 
+            if (!string.IsNullOrWhiteSpace(request.GameId))
+            {
+                var hasGame = userGameProfiles?.Any(gp => gp.GameId == request.GameId) ?? false;
+                if (!hasGame) continue;
+            }
+
             if (request.LookingForTeam == true && !isLft) continue;
 
             if (request.Region.HasValue && topGameProfile?.Region != request.Region.Value)

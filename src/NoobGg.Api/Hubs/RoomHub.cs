@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using NoobGg.Api.Hubs.Contracts;
 
 namespace NoobGg.Api.Hubs;
 
 [Authorize]
-public class RoomHub : Hub
+public class RoomHub : Hub<IRoomClient>
 {
     private readonly ILogger<RoomHub> _logger;
 

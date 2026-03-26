@@ -12,11 +12,16 @@ public class ReviewReportCommandHandler : IRequestHandler<ReviewReportCommand, R
 {
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
+    private readonly INotificationService _notificationService;
 
-    public ReviewReportCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser)
+    public ReviewReportCommandHandler(
+        IMongoContext mongoContext,
+        ICurrentUser currentUser,
+        INotificationService notificationService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
+        _notificationService = notificationService;
     }
 
     public async Task<Result> Handle(ReviewReportCommand request, CancellationToken ct)
@@ -56,6 +61,15 @@ public class ReviewReportCommandHandler : IRequestHandler<ReviewReportCommand, R
             TargetId = request.ReportId,
             Details = $"Status → {request.NewStatus}. Note: {request.ReviewNote ?? "(none)"}"
         }, cancellationToken: ct);
+
+        var statusText = request.NewStatus == ReportStatus.Dismissed ? "dismissed" : "resolved";
+        await _notificationService.CreateAsync(
+            report.ReporterId,
+            NotificationType.ReportResolved,
+            $"Your report has been {statusText}",
+            request.ReviewNote?.Trim() ?? $"A moderator has reviewed and {statusText} your report.",
+            new Dictionary<string, string> { { "reportId", request.ReportId } },
+            ct);
 
         return Result.Success();
     }

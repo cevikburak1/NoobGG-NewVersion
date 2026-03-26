@@ -11,3 +11,8 @@ export async function browseGames(params: GameBrowseParams): Promise<PagedResult
   const { data } = await api.get<PagedResult<GameResponse>>('/api/games', { params });
   return data;
 }
+
+export async function getGameDetail(gameId: string): Promise<GameResponse> {
+  const { data } = await api.get<GameResponse>(`/api/games/${gameId}`);
+  return data;
+}

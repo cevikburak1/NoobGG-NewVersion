@@ -71,6 +71,10 @@ export function DmProvider({ children }: { children: ReactNode }) {
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
     });
 
+    conn.on('PresenceChanged', (userId: string, isOnline: boolean) => {
+      qc.setQueryData(['presence', userId], { isOnline });
+    });
+
     conn.onreconnecting(() => setStatus('reconnecting'));
     conn.onreconnected(() => setStatus('connected'));
     conn.onclose(() => setStatus('disconnected'));

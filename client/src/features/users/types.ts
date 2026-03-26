@@ -22,6 +22,7 @@ export interface DiscoverPlayerResponse {
 
 export interface PlayerDiscoverParams {
   search?: string;
+  gameId?: string;
   region?: string;
   experienceLevel?: string;
   lookingForTeam?: boolean;

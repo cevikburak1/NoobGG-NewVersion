@@ -37,8 +37,17 @@ public class BrowseGamesQueryHandler : IRequestHandler<BrowseGamesQuery, Result<
         if (!string.IsNullOrWhiteSpace(request.Genre))
             filters.Add(Builders<Game>.Filter.AnyEq(g => g.Genres, request.Genre));
 
+        if (!string.IsNullOrWhiteSpace(request.Platform))
+            filters.Add(Builders<Game>.Filter.AnyEq(g => g.Platforms, request.Platform));
+
         if (request.IsMultiplayer == true)
             filters.Add(Builders<Game>.Filter.Eq(g => g.IsMultiplayer, true));
+
+        if (request.IsCoop == true)
+            filters.Add(Builders<Game>.Filter.Eq(g => g.IsCoop, true));
+
+        if (request.IsPvp == true)
+            filters.Add(Builders<Game>.Filter.Eq(g => g.IsPvp, true));
 
         if (request.IsFreeToPlay == true)
             filters.Add(Builders<Game>.Filter.Eq(g => g.IsFreeToPlay, true));

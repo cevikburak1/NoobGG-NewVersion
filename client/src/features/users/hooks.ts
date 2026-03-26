@@ -7,5 +7,6 @@ export function useDiscoverPlayers(params: PlayerDiscoverParams) {
   return useQuery({
     queryKey: queryKeys.users.discover(params),
     queryFn: () => discoverPlayers(params),
+    refetchInterval: 15_000,
   });
 }

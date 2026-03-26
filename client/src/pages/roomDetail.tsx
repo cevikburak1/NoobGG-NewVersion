@@ -21,8 +21,6 @@ export default function RoomDetailPage() {
   const user = useAuthStore((s) => s.user);
 
   const { data: room, isLoading } = useRoomDetail(roomId);
-  const { data: history, isLoading: historyLoading } = useChatHistory(roomId ?? '');
-  const chat = useChatConnection(roomId);
   const joinRoom = useJoinRoom();
   const leaveRoom = useLeaveRoom();
   const closeRoom = useCloseRoom();
@@ -31,6 +29,10 @@ export default function RoomDetailPage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
 
   const isMember = room?.members.some((m) => m.userId === user?.id);
+
+  const chatRoomId = isMember ? roomId : undefined;
+  const { data: history, isLoading: historyLoading } = useChatHistory(chatRoomId ?? '');
+  const chat = useChatConnection(chatRoomId);
   const isOwner = room?.creatorId === user?.id;
 
   const historyMessages = history?.items ?? [];
@@ -337,8 +339,10 @@ function RoomSidebar({
             >
               <div className="relative">
                 <UserAvatar username={member.username} size="sm" />
-                {isMember && onlineIds.has(member.userId) && (
-                  <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-success" />
+                {isMember && (
+                  <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
+                    onlineIds.has(member.userId) ? 'bg-success' : 'bg-danger'
+                  }`} />
                 )}
               </div>
               <div className="min-w-0 flex-1">

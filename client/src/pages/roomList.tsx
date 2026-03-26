@@ -48,12 +48,23 @@ export default function RoomListPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filters, setFilters] = useState<RoomFilters>({ page: 1, pageSize: 12 });
 
+  const [gameFilterSearch, setGameFilterSearch] = useState('');
+  const [gameFilterName, setGameFilterName] = useState('');
+  const [showGameDropdown, setShowGameDropdown] = useState(false);
+  const debouncedGameFilter = useDebounce(gameFilterSearch, 300);
+  const { data: filterGames } = useGameSearch(debouncedGameFilter);
+
   const { data, isLoading } = useRooms(filters);
+
+  const clearGameFilter = () => {
+    setFilters((f) => ({ ...f, gameId: undefined, page: 1 }));
+    setGameFilterSearch('');
+    setGameFilterName('');
+  };
 
   return (
     <AnimatedPage>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <h1 className="text-3xl font-bold text-foreground">Rooms</h1>
@@ -74,14 +85,71 @@ export default function RoomListPage() {
           </motion.div>
         </div>
 
-        {/* Filters */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-wrap gap-3"
+          className="flex flex-wrap items-end gap-3"
         >
-          <div className="w-full sm:w-48">
+          {/* Game Filter */}
+          <div className="relative w-full sm:w-56">
+            {filters.gameId ? (
+              <div className="flex h-[38px] items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3">
+                <span className="text-xs">🎮</span>
+                <span className="flex-1 truncate text-sm font-medium text-foreground">{gameFilterName}</span>
+                <button onClick={clearGameFilter} className="text-foreground-muted hover:text-danger transition-colors">
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <>
+                <Input
+                  id="gameFilter"
+                  placeholder="Filter by game..."
+                  value={gameFilterSearch}
+                  onChange={(e) => { setGameFilterSearch(e.target.value); setShowGameDropdown(true); }}
+                  onFocus={() => setShowGameDropdown(true)}
+                />
+                <AnimatePresence>
+                  {showGameDropdown && filterGames && filterGames.length > 0 && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setShowGameDropdown(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="absolute left-0 top-full z-40 mt-1 max-h-52 w-72 overflow-y-auto rounded-lg border border-border bg-surface shadow-xl"
+                      >
+                        {filterGames.map((g) => (
+                          <button
+                            key={g.id}
+                            className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover transition-colors"
+                            onClick={() => {
+                              setFilters((f) => ({ ...f, gameId: g.id, page: 1 }));
+                              setGameFilterName(g.name);
+                              setGameFilterSearch('');
+                              setShowGameDropdown(false);
+                            }}
+                          >
+                            {g.backgroundImageUrl ? (
+                              <img src={g.backgroundImageUrl} alt={g.name} className="h-7 w-10 shrink-0 rounded object-cover" />
+                            ) : (
+                              <div className="flex h-7 w-10 shrink-0 items-center justify-center rounded bg-surface-hover text-xs">🎮</div>
+                            )}
+                            <span className="min-w-0 flex-1 truncate font-medium">{g.name}</span>
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
+          </div>
+
+          <div className="w-full sm:w-44">
             <Select
               id="region"
               options={regionOptions}
@@ -90,7 +158,7 @@ export default function RoomListPage() {
               placeholder="All Regions"
             />
           </div>
-          <div className="w-full sm:w-48">
+          <div className="w-full sm:w-44">
             <Select
               id="language"
               options={languageOptions}
@@ -213,7 +281,7 @@ function RoomCard({ room }: { room: RoomResponse }) {
                 alt={room.gameName ?? 'Game'}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-surface via-surface/60 to-transparent" />
               {room.gameName && (
                 <span className="absolute bottom-2 left-3 text-xs font-medium text-white/80 bg-black/40 px-2 py-0.5 rounded">
                   {room.gameName}
@@ -221,7 +289,7 @@ function RoomCard({ room }: { room: RoomResponse }) {
               )}
             </div>
           ) : (
-            <div className="h-16 bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
+            <div className="h-16 bg-linear-to-br from-primary/20 to-accent/10 flex items-center justify-center">
               <span className="text-xs text-foreground-muted">{room.gameName ?? 'Unknown Game'}</span>
             </div>
           )}
@@ -375,10 +443,10 @@ function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                       <img
                         src={g.backgroundImageUrl}
                         alt={g.name}
-                        className="h-8 w-12 rounded object-cover flex-shrink-0"
+                        className="h-8 w-12 rounded object-cover shrink-0"
                       />
                     ) : (
-                      <div className="h-8 w-12 rounded bg-surface-hover flex-shrink-0" />
+                      <div className="h-8 w-12 rounded bg-surface-hover shrink-0" />
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{g.name}</p>
@@ -387,7 +455,7 @@ function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                       )}
                     </div>
                     {g.metacritic && (
-                      <span className={`flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-bold ${
                         g.metacritic >= 75 ? 'bg-success/20 text-success' :
                         g.metacritic >= 50 ? 'bg-warning/20 text-warning' :
                         'bg-danger/20 text-danger'
@@ -458,7 +526,7 @@ function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
             animate={{ opacity: 1 }}
             className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger"
           >
-            Failed to create room. Please try again.
+            {(createRoom.error as any)?.response?.data?.title ?? 'Failed to create room. Please try again.'}
           </motion.p>
         )}
 

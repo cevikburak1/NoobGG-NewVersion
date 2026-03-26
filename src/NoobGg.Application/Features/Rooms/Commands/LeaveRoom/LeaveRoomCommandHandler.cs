@@ -12,11 +12,19 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
 {
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
+    private readonly IRoomNotificationService _roomNotification;
+    private readonly INotificationService _notificationService;
 
-    public LeaveRoomCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser)
+    public LeaveRoomCommandHandler(
+        IMongoContext mongoContext,
+        ICurrentUser currentUser,
+        IRoomNotificationService roomNotification,
+        INotificationService notificationService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
+        _roomNotification = roomNotification;
+        _notificationService = notificationService;
     }
 
     public async Task<Result> Handle(LeaveRoomCommand request, CancellationToken ct)
@@ -38,6 +46,24 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
         // If owner leaves, close the entire room
         if (membership.Role == RoomMemberRole.Owner)
         {
+            var closingRoom = await rooms.Find(r => r.Id == request.RoomId).FirstOrDefaultAsync(ct);
+            var allMembers = await roomMembers
+                .Find(m => m.RoomId == request.RoomId && m.UserId != userId)
+                .ToListAsync(ct);
+
+            await _roomNotification.NotifyRoomClosedAsync(request.RoomId, ct);
+
+            foreach (var m in allMembers)
+            {
+                await _notificationService.CreateAsync(
+                    m.UserId,
+                    NotificationType.RoomClosed,
+                    "Removed from room",
+                    $"You were removed from \"{closingRoom?.Title ?? "A room"}\" because it was closed by the owner",
+                    new Dictionary<string, string> { { "roomId", request.RoomId } },
+                    ct);
+            }
+
             await rooms.UpdateOneAsync(
                 Builders<Room>.Filter.Eq(r => r.Id, request.RoomId),
                 Builders<Room>.Update
@@ -50,6 +76,8 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
             await roomMembers.DeleteManyAsync(
                 Builders<RoomMember>.Filter.Eq(m => m.RoomId, request.RoomId),
                 ct);
+
+            await _roomNotification.NotifyRoomListChangedAsync(ct);
 
             return Result.Success();
         }
@@ -80,6 +108,21 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
                 Builders<Room>.Filter.Eq(r => r.Id, request.RoomId),
                 Builders<Room>.Update.Set(r => r.Status, RoomStatus.Open),
                 cancellationToken: ct);
+        }
+
+        await _roomNotification.NotifyMemberLeftAsync(
+            request.RoomId, userId, _currentUser.Username ?? "Unknown", ct);
+        await _roomNotification.NotifyRoomListChangedAsync(ct);
+
+        if (room is not null && room.CreatorId != userId)
+        {
+            await _notificationService.CreateAsync(
+                room.CreatorId,
+                NotificationType.RoomLeft,
+                "Member left your room",
+                $"{_currentUser.Username ?? "Someone"} left \"{room.Title}\"",
+                new Dictionary<string, string> { { "roomId", request.RoomId } },
+                ct);
         }
 
         return Result.Success();

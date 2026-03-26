@@ -9,4 +9,5 @@ public interface IDirectMessageClient
     Task MessagesRead(string conversationId, string readByUserId);
     Task UserTypingDM(string conversationId, string userId, string username);
     Task UserStoppedTypingDM(string conversationId, string userId);
+    Task PresenceChanged(string userId, bool isOnline);
 }

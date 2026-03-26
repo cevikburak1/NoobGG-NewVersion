@@ -1,6 +1,7 @@
 import { HubConnectionState, type HubConnection } from '@microsoft/signalr';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as chatApi from '@/features/chat/api';
 import type {
   ChatMessageResponse,
@@ -8,6 +9,8 @@ import type {
   MessageDeletedEvent,
   MessageEditedEvent,
   OnlineUser,
+  RoomClosedEvent,
+  RoomMemberEvent,
   RoomPresenceResponse,
   TypingEvent,
 } from '@/features/chat/types';
@@ -51,6 +54,8 @@ export function useChatConnection(roomId: string | undefined) {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const messageIdsRef = useRef<Set<string>>(new Set());
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const addMessage = useCallback((msg: ChatMessageResponse) => {
     if (messageIdsRef.current.has(msg.id)) return;
@@ -126,6 +131,24 @@ export function useChatConnection(roomId: string | undefined) {
       setOnlineUsers(presence.onlineUsers);
     });
 
+    connection.on('roomMemberJoined', (event: RoomMemberEvent) => {
+      if (event.roomId !== roomId) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.detail(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+    });
+
+    connection.on('roomMemberLeft', (event: RoomMemberEvent) => {
+      if (event.roomId !== roomId) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.detail(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+    });
+
+    connection.on('roomClosed', (event: RoomClosedEvent) => {
+      if (event.roomId !== roomId) return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+      navigate('/rooms');
+    });
+
     let cancelled = false;
 
     const joinRoom = async () => {
@@ -194,7 +217,7 @@ export function useChatConnection(roomId: string | undefined) {
       setReconnectAttempt(0);
       ids.clear();
     };
-  }, [roomId, addMessage]);
+  }, [roomId, addMessage, queryClient, navigate]);
 
   /* Auto-clear stale typing indicators */
   useEffect(() => {

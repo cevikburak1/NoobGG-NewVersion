@@ -17,6 +17,7 @@ export const queryKeys = {
   games: {
     search: (query: string) => ['games', 'search', query] as const,
     browse: (params: GameBrowseParams) => ['games', 'browse', params] as const,
+    detail: (id: string) => ['games', 'detail', id] as const,
   },
   users: {
     discover: (params: PlayerDiscoverParams) => ['users', 'discover', params] as const,
@@ -43,6 +44,7 @@ export const queryKeys = {
     list: () => ['blocks'] as const,
   },
   notifications: {
-    list: () => ['notifications'] as const,
+    list: (params?: Record<string, unknown>) => ['notifications', 'list', params] as const,
+    unreadCount: () => ['notifications', 'unread'] as const,
   },
 } as const;

@@ -13,11 +13,16 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
 {
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
+    private readonly IRoomNotificationService _roomNotification;
 
-    public CreateRoomCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser)
+    public CreateRoomCommandHandler(
+        IMongoContext mongoContext,
+        ICurrentUser currentUser,
+        IRoomNotificationService roomNotification)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
+        _roomNotification = roomNotification;
     }
 
     public async Task<Result<RoomDetailResponse>> Handle(CreateRoomCommand request, CancellationToken ct)
@@ -100,6 +105,8 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
             room.VoiceChannelId,
             room.CreatedAt,
             [memberResponse]);
+
+        await _roomNotification.NotifyRoomListChangedAsync(ct);
 
         return Result<RoomDetailResponse>.Created(response);
     }

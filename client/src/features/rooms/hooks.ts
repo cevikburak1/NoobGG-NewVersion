@@ -7,6 +7,7 @@ export function useRooms(filters: RoomFilters) {
   return useQuery({
     queryKey: queryKeys.rooms.list(filters),
     queryFn: () => roomsApi.getRooms(filters),
+    refetchInterval: 30_000,
   });
 }
 
@@ -34,6 +35,7 @@ export function useJoinRoom() {
     mutationFn: roomsApi.joinRoom,
     onSuccess: (_, roomId) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.detail(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(roomId) });
     },
   });
 }

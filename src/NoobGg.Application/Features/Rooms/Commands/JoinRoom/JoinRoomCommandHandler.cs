@@ -12,11 +12,19 @@ public class JoinRoomCommandHandler : IRequestHandler<JoinRoomCommand, Result>
 {
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
+    private readonly IRoomNotificationService _roomNotification;
+    private readonly INotificationService _notificationService;
 
-    public JoinRoomCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser)
+    public JoinRoomCommandHandler(
+        IMongoContext mongoContext,
+        ICurrentUser currentUser,
+        IRoomNotificationService roomNotification,
+        INotificationService notificationService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
+        _roomNotification = roomNotification;
+        _notificationService = notificationService;
     }
 
     public async Task<Result> Handle(JoinRoomCommand request, CancellationToken ct)
@@ -85,6 +93,22 @@ public class JoinRoomCommandHandler : IRequestHandler<JoinRoomCommand, Result>
                 Builders<Room>.Filter.Eq(r => r.Id, request.RoomId),
                 Builders<Room>.Update.Set(r => r.Status, RoomStatus.Full),
                 cancellationToken: ct);
+        }
+
+        await _roomNotification.NotifyMemberJoinedAsync(
+            request.RoomId, userId, _currentUser.Username ?? "Unknown", ct);
+        await _roomNotification.NotifyRoomListChangedAsync(ct);
+
+        var username = _currentUser.Username ?? "Unknown";
+        if (updatedRoom.CreatorId != userId)
+        {
+            await _notificationService.CreateAsync(
+                updatedRoom.CreatorId,
+                NotificationType.RoomJoined,
+                "New member joined your room",
+                $"{username} joined \"{updatedRoom.Title}\"",
+                new Dictionary<string, string> { { "roomId", request.RoomId } },
+                ct);
         }
 
         return Result.Success();

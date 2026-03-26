@@ -11,6 +11,7 @@ public class UsersController : ApiControllerBase
     [HttpGet("discover")]
     public async Task<IActionResult> Discover(
         [FromQuery] string? search = null,
+        [FromQuery] string? gameId = null,
         [FromQuery] Region? region = null,
         [FromQuery] ExperienceLevel? experienceLevel = null,
         [FromQuery] bool? lookingForTeam = null,
@@ -20,6 +21,7 @@ public class UsersController : ApiControllerBase
         var query = new DiscoverPlayersQuery
         {
             Search = search,
+            GameId = gameId,
             Region = region,
             ExperienceLevel = experienceLevel,
             LookingForTeam = lookingForTeam,

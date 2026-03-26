@@ -17,6 +17,8 @@ public static class ServiceCollectionExtensions
         services.AddSignalRServices(configuration);
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUser, CurrentUserService>();
+        services.AddSingleton<IRoomNotificationService, RoomNotificationService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

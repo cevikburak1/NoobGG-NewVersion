@@ -8,6 +8,7 @@ namespace NoobGg.Application.Features.Users.Queries.DiscoverPlayers;
 public record DiscoverPlayersQuery : IRequest<Result<PagedResult<DiscoverPlayerResponse>>>
 {
     public string? Search { get; init; }
+    public string? GameId { get; init; }
     public Region? Region { get; init; }
     public ExperienceLevel? ExperienceLevel { get; init; }
     public bool? LookingForTeam { get; init; }

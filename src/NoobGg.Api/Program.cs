@@ -75,6 +75,7 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<RoomHub>("/hubs/room");
 app.MapHub<DirectMessageHub>("/hubs/dm");
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 Log.Information("NoobGg API starting up");
 app.Run();

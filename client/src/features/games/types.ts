@@ -28,7 +28,10 @@ export interface GameSearchParams {
 export interface GameBrowseParams {
   search?: string;
   genre?: string;
+  platform?: string;
   multiplayer?: boolean;
+  coop?: boolean;
+  pvp?: boolean;
   freeToPlay?: boolean;
   page?: number;
   pageSize?: number;

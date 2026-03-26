@@ -42,6 +42,26 @@ export function createDmConnection(getAccessToken: () => string | null): HubConn
     .build();
 }
 
+export function createRoomConnection(getAccessToken: () => string | null): HubConnection {
+  return new HubConnectionBuilder()
+    .withUrl(`${BASE_URL}/hubs/room`, {
+      accessTokenFactory: () => getAccessToken() ?? '',
+    })
+    .withAutomaticReconnect(retryPolicy)
+    .configureLogging(LogLevel.Warning)
+    .build();
+}
+
+export function createNotificationConnection(getAccessToken: () => string | null): HubConnection {
+  return new HubConnectionBuilder()
+    .withUrl(`${BASE_URL}/hubs/notifications`, {
+      accessTokenFactory: () => getAccessToken() ?? '',
+    })
+    .withAutomaticReconnect(retryPolicy)
+    .configureLogging(LogLevel.Warning)
+    .build();
+}
+
 export function getConnectionStatus(connection: HubConnection): ConnectionStatus {
   switch (connection.state) {
     case HubConnectionState.Connected:

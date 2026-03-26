@@ -5,6 +5,8 @@ import { queryClient } from '@/lib/queryClient';
 import { ErrorBoundary } from '@/components/common/errorBoundary';
 import { ToastProvider } from '@/components/ui/toast';
 import { DmProvider } from '@/providers/dmProvider';
+import { NotificationProvider } from '@/providers/notificationProvider';
+import { RoomProvider } from '@/providers/roomProvider';
 
 interface ProvidersProps {
   children: ReactNode;
@@ -15,9 +17,13 @@ export function Providers({ children }: ProvidersProps) {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
-          <DmProvider>
-            {children}
-          </DmProvider>
+          <NotificationProvider>
+            <RoomProvider>
+              <DmProvider>
+                {children}
+              </DmProvider>
+            </RoomProvider>
+          </NotificationProvider>
         </ToastProvider>
         <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
       </QueryClientProvider>

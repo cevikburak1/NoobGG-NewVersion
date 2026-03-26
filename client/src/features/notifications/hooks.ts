@@ -1,34 +1,53 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { getNotifications, markAllAsRead, markAsRead } from './api';
+import { useNotificationContext } from '@/providers/notificationProvider';
+import {
+  getNotifications,
+  getUnreadCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from './api';
 
-export function useNotifications() {
+export function useNotifications(params: {
+  unreadOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+} = {}) {
   return useQuery({
-    queryKey: queryKeys.notifications.list(),
-    queryFn: getNotifications,
+    queryKey: queryKeys.notifications.list(params),
+    queryFn: () => getNotifications(params),
   });
 }
 
-export function useMarkAsRead() {
-  const queryClient = useQueryClient();
+export function useUnreadCount(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.notifications.unreadCount(),
+    queryFn: getUnreadCount,
+    enabled,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkRead() {
+  const qc = useQueryClient();
+  const { refreshUnreadCount } = useNotificationContext();
   return useMutation({
-    mutationFn: markAsRead,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.notifications.list(),
-      });
+    mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      refreshUnreadCount();
     },
   });
 }
 
-export function useMarkAllAsRead() {
-  const queryClient = useQueryClient();
+export function useMarkAllRead() {
+  const qc = useQueryClient();
+  const { refreshUnreadCount } = useNotificationContext();
   return useMutation({
-    mutationFn: markAllAsRead,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.notifications.list(),
-      });
+    mutationFn: markAllNotificationsRead,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      refreshUnreadCount();
     },
   });
 }

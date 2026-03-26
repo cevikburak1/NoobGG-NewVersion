@@ -8,6 +8,7 @@ using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Features.DirectMessages.DTOs;
 using NoobGg.Domain.Entities;
+using NoobGg.Domain.Enums;
 
 namespace NoobGg.Api.Hubs;
 
@@ -17,15 +18,18 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
     private readonly ILogger<DirectMessageHub> _logger;
     private readonly IMongoContext _mongoContext;
     private readonly IPresenceTracker _presenceTracker;
+    private readonly INotificationService _notificationService;
 
     public DirectMessageHub(
         ILogger<DirectMessageHub> logger,
         IMongoContext mongoContext,
-        IPresenceTracker presenceTracker)
+        IPresenceTracker presenceTracker,
+        INotificationService notificationService)
     {
         _logger = logger;
         _mongoContext = mongoContext;
         _presenceTracker = presenceTracker;
+        _notificationService = notificationService;
     }
 
     public override async Task OnConnectedAsync()
@@ -44,6 +48,8 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
             await Groups.AddToGroupAsync(Context.ConnectionId, $"dm:{conv.Id}");
         }
 
+        await Clients.Others.PresenceChanged(userId, true);
+
         _logger.LogInformation("User {UserId} connected to DirectMessageHub", userId);
         await base.OnConnectedAsync();
     }
@@ -52,6 +58,11 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
     {
         var userId = GetUserId();
         _presenceTracker.UserDisconnected(userId, Context.ConnectionId);
+
+        if (!_presenceTracker.IsOnline(userId))
+        {
+            await Clients.Others.PresenceChanged(userId, false);
+        }
 
         _logger.LogInformation("User {UserId} disconnected from DirectMessageHub", userId);
         await base.OnDisconnectedAsync(exception);
@@ -118,6 +129,17 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
         };
 
         await Clients.Group($"dm:{conversationId}").ReceiveDirectMessage(response);
+
+        await _notificationService.CreateAsync(
+            partnerId,
+            NotificationType.DirectMessage,
+            $"New message from {username}",
+            dm.Content.Length > 100 ? dm.Content[..100] + "..." : dm.Content,
+            new Dictionary<string, string>
+            {
+                { "conversationId", conversationId },
+                { "senderId", userId }
+            });
     }
 
     public async Task MarkAsRead(string conversationId)

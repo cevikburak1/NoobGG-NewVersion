@@ -4,12 +4,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
+import { useNotificationContext } from '@/providers/notificationProvider';
 
 export function Navbar() {
   const user = useAuthStore((s) => s.user);
   const isAuth = useAuthStore((s) => s.isAuthenticated());
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
+  const { unreadCount } = useNotificationContext();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +50,11 @@ export function Navbar() {
             <>
               <Link to="/notifications" className="relative p-2 text-foreground-muted hover:text-foreground transition-colors">
                 <BellIcon />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
               <div className="relative" ref={dropdownRef}>
                 <button
