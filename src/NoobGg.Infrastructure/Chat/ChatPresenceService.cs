@@ -6,7 +6,8 @@ namespace NoobGg.Infrastructure.Chat;
 
 /// <summary>
 /// Redis-backed presence tracking for room chat.
-/// Uses Redis HASH for room→users mapping and SET for user→rooms mapping.
+/// Uses per-user connection SETs to handle multi-tab correctly:
+/// a user is only removed from a room when their last connection leaves.
 /// </summary>
 public class ChatPresenceService : IChatPresenceService
 {
@@ -15,6 +16,7 @@ public class ChatPresenceService : IChatPresenceService
 
     private const string RoomOnlinePrefix = "chat:room:online:";
     private const string UserRoomsPrefix = "chat:user:rooms:";
+    private const string RoomConnPrefix = "chat:room:conns:";
 
     public ChatPresenceService(IConnectionMultiplexer redis, ILogger<ChatPresenceService> logger)
     {
@@ -22,34 +24,52 @@ public class ChatPresenceService : IChatPresenceService
         _logger = logger;
     }
 
-    public async Task TrackUserJoinedRoomAsync(string roomId, string userId, string username)
+    public async Task TrackUserJoinedRoomAsync(string roomId, string userId, string username, string connectionId)
     {
         var roomKey = RoomOnlinePrefix + roomId;
         var userKey = UserRoomsPrefix + userId;
+        var connKey = $"{RoomConnPrefix}{roomId}:{userId}";
 
         var batch = _db.CreateBatch();
         var t1 = batch.HashSetAsync(roomKey, userId, username);
         var t2 = batch.SetAddAsync(userKey, roomId);
+        var t3 = batch.SetAddAsync(connKey, connectionId);
         batch.Execute();
 
-        await Task.WhenAll(t1, t2);
+        await Task.WhenAll(t1, t2, t3);
 
-        _logger.LogDebug("Presence tracked: user {UserId} joined room {RoomId}", userId, roomId);
+        _logger.LogDebug("Presence tracked: connection {ConnId} for user {UserId} joined room {RoomId}",
+            connectionId, userId, roomId);
     }
 
-    public async Task TrackUserLeftRoomAsync(string roomId, string userId)
+    public async Task<bool> TrackUserLeftRoomAsync(string roomId, string userId, string connectionId)
     {
+        var connKey = $"{RoomConnPrefix}{roomId}:{userId}";
+
+        await _db.SetRemoveAsync(connKey, connectionId);
+        var remaining = await _db.SetLengthAsync(connKey);
+
+        if (remaining > 0)
+        {
+            _logger.LogDebug(
+                "Connection {ConnId} left room {RoomId}, user {UserId} still has {Count} connection(s)",
+                connectionId, roomId, userId, remaining);
+            return false;
+        }
+
         var roomKey = RoomOnlinePrefix + roomId;
         var userKey = UserRoomsPrefix + userId;
 
         var batch = _db.CreateBatch();
         var t1 = batch.HashDeleteAsync(roomKey, userId);
         var t2 = batch.SetRemoveAsync(userKey, roomId);
+        var t3 = batch.KeyDeleteAsync(connKey);
         batch.Execute();
 
-        await Task.WhenAll(t1, t2);
+        await Task.WhenAll(t1, t2, t3);
 
-        _logger.LogDebug("Presence tracked: user {UserId} left room {RoomId}", userId, roomId);
+        _logger.LogDebug("Presence tracked: user {UserId} fully left room {RoomId} (last connection)", userId, roomId);
+        return true;
     }
 
     public async Task<List<(string UserId, string Username)>> GetOnlineUsersInRoomAsync(string roomId)
@@ -71,12 +91,12 @@ public class ChatPresenceService : IChatPresenceService
             return;
 
         var batch = _db.CreateBatch();
-        var tasks = new List<Task>(roomIds.Length + 1);
+        var tasks = new List<Task>(roomIds.Length * 2 + 1);
 
         foreach (var roomId in roomIds)
         {
-            var roomKey = RoomOnlinePrefix + roomId;
-            tasks.Add(batch.HashDeleteAsync(roomKey, userId));
+            tasks.Add(batch.HashDeleteAsync(RoomOnlinePrefix + roomId, userId));
+            tasks.Add(batch.KeyDeleteAsync($"{RoomConnPrefix}{roomId}:{userId}"));
         }
 
         tasks.Add(batch.KeyDeleteAsync(userKey));

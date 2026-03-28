@@ -9,6 +9,7 @@ public static class CollectionNames
     public const string Games = "games";
     public const string Rooms = "rooms";
     public const string RoomMembers = "roomMembers";
+    public const string RoomInvites = "roomInvites";
     public const string Messages = "messages";
     public const string Friendships = "friendships";
     public const string Favorites = "favorites";

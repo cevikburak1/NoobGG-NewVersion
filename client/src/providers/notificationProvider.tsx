@@ -61,7 +61,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const conn = createNotificationConnection(() => useAuthStore.getState().accessToken);
     connectionRef.current = conn;
 
-    conn.on('ReceiveNotification', (notification: NotificationResponse) => {
+    conn.on('receiveNotification', (notification: NotificationResponse) => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
 
       const icon = TYPE_ICONS[notification.type] ?? '🔔';
@@ -73,12 +73,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    conn.on('UnreadCountChanged', (count: number) => {
+    conn.on('unreadCountChanged', (count: number) => {
       setUnreadCount(count);
       qc.setQueryData(queryKeys.notifications.unreadCount(), count);
     });
 
-    conn.on('BlockListChanged', () => {
+    conn.on('blockListChanged', () => {
       qc.invalidateQueries({ queryKey: queryKeys.blocks.list() });
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
       qc.invalidateQueries({ queryKey: ['users'] });
@@ -88,20 +88,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       qc.invalidateQueries({ queryKey: queryKeys.friends.requests() });
     });
 
-    conn.on('FriendListChanged', () => {
+    conn.on('friendListChanged', () => {
       qc.invalidateQueries({ queryKey: queryKeys.friends.list() });
       qc.invalidateQueries({ queryKey: queryKeys.friends.requests() });
       qc.invalidateQueries({ queryKey: ['profile'] });
       qc.invalidateQueries({ queryKey: ['users'] });
     });
 
-    conn.on('ForceDisconnect', (reason: string) => {
+    conn.on('forceDisconnect', (reason: string) => {
       addToast({ title: 'Disconnected', message: reason, type: 'warning' });
       useAuthStore.getState().logout();
     });
 
     conn.onreconnecting(() => {});
-    conn.onreconnected(() => {});
+    conn.onreconnected(() => {
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      void refreshUnreadCount();
+    });
     conn.onclose(() => {});
 
     startConnection(conn).catch(() => {});
@@ -110,7 +113,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       stopConnection(conn);
       connectionRef.current = null;
     };
-  }, [accessToken, qc, addToast]);
+  }, [accessToken, qc, addToast, refreshUnreadCount]);
 
   return (
     <NotificationContext.Provider value={{ unreadCount, refreshUnreadCount }}>

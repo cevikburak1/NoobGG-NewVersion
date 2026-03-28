@@ -47,7 +47,7 @@ export function DmProvider({ children }: { children: ReactNode }) {
     const conn = createDmConnection(() => useAuthStore.getState().accessToken);
     connectionRef.current = conn;
 
-    conn.on('ReceiveDirectMessage', (msg: DirectMessageResponse) => {
+    conn.on('receiveDirectMessage', (msg: DirectMessageResponse) => {
       qc.invalidateQueries({ queryKey: queryKeys.dm.messages(msg.conversationId) });
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
 
@@ -66,17 +66,20 @@ export function DmProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    conn.on('MessagesRead', (conversationId: string) => {
+    conn.on('messagesRead', (conversationId: string) => {
       qc.invalidateQueries({ queryKey: queryKeys.dm.messages(conversationId) });
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
     });
 
-    conn.on('PresenceChanged', (userId: string, isOnline: boolean) => {
+    conn.on('presenceChanged', (userId: string, isOnline: boolean) => {
       qc.setQueryData(['presence', userId], { isOnline });
     });
 
     conn.onreconnecting(() => setStatus('reconnecting'));
-    conn.onreconnected(() => setStatus('connected'));
+    conn.onreconnected(() => {
+      setStatus('connected');
+      qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
+    });
     conn.onclose(() => setStatus('disconnected'));
 
     startConnection(conn)

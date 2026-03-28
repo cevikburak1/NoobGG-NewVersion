@@ -1,6 +1,6 @@
 import { api } from '@/lib/api';
 import type { PagedResult, RoomFilters } from '@/types/api';
-import type { CreateRoomRequest, RoomDetailResponse, RoomResponse } from '@/features/rooms/types';
+import type { CreateRoomRequest, RoomDetailResponse, RoomInviteResponse, RoomResponse } from '@/features/rooms/types';
 
 export async function getRooms(filters: RoomFilters): Promise<PagedResult<RoomResponse>> {
   const { data } = await api.get<PagedResult<RoomResponse>>('/api/rooms', { params: filters });
@@ -31,4 +31,21 @@ export async function closeRoom(id: string): Promise<void> {
 
 export async function kickMember(roomId: string, userId: string): Promise<void> {
   await api.post(`/api/rooms/${roomId}/kick`, { userId });
+}
+
+export async function inviteToRoom(roomId: string, userId: string): Promise<void> {
+  await api.post(`/api/rooms/${roomId}/invite/${userId}`);
+}
+
+export async function getPendingInvites(): Promise<RoomInviteResponse[]> {
+  const { data } = await api.get<RoomInviteResponse[]>('/api/rooms/invites');
+  return data;
+}
+
+export async function acceptInvite(inviteId: string): Promise<void> {
+  await api.post(`/api/rooms/invites/${inviteId}/accept`);
+}
+
+export async function declineInvite(inviteId: string): Promise<void> {
+  await api.post(`/api/rooms/invites/${inviteId}/decline`);
 }

@@ -72,8 +72,17 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
 
     public async Task JoinConversation(string conversationId)
     {
+        var userId = GetUserId();
+        var conversations = _mongoContext.GetCollection<Conversation>(CollectionNames.Conversations);
+        var conv = await conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();
+
+        if (conv is null) return;
+        if (conv.Participant1Id != userId && conv.Participant2Id != userId) return;
+
         await Groups.AddToGroupAsync(Context.ConnectionId, $"dm:{conversationId}");
     }
+
+    private const int MaxMessageLength = 2000;
 
     public async Task SendDirectMessage(string conversationId, string content)
     {
@@ -81,6 +90,8 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
         var username = GetUsername();
 
         if (string.IsNullOrWhiteSpace(content)) return;
+        if (content.Length > MaxMessageLength)
+            throw new HubException($"Message exceeds maximum length of {MaxMessageLength} characters");
 
         var conversations = _mongoContext.GetCollection<Conversation>(CollectionNames.Conversations);
         var messages = _mongoContext.GetCollection<DirectMessage>(CollectionNames.DirectMessages);

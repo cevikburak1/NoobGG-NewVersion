@@ -40,6 +40,7 @@ public class MongoIndexInitializer : IHostedService
         await CreateGameIndexes(ct);
         await CreateRoomIndexes(ct);
         await CreateRoomMemberIndexes(ct);
+        await CreateRoomInviteIndexes(ct);
         await CreateMessageIndexes(ct);
         await CreateFriendshipIndexes(ct);
         await CreateFavoriteIndexes(ct);
@@ -190,6 +191,27 @@ public class MongoIndexInitializer : IHostedService
             new CreateIndexModel<RoomMember>(
                 Builders<RoomMember>.IndexKeys.Ascending(m => m.UserId),
                 new CreateIndexOptions { Name = "idx_userId" })
+        ], ct);
+    }
+
+    private async Task CreateRoomInviteIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<RoomInvite>(CollectionNames.RoomInvites);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<RoomInvite>(
+                Builders<RoomInvite>.IndexKeys
+                    .Ascending(i => i.RoomId)
+                    .Ascending(i => i.InvitedUserId)
+                    .Ascending(i => i.Status),
+                new CreateIndexOptions { Name = "idx_roomId_invitedUserId_status" }),
+            new CreateIndexModel<RoomInvite>(
+                Builders<RoomInvite>.IndexKeys
+                    .Ascending(i => i.InvitedUserId)
+                    .Ascending(i => i.Status),
+                new CreateIndexOptions { Name = "idx_invitedUserId_status" }),
+            new CreateIndexModel<RoomInvite>(
+                Builders<RoomInvite>.IndexKeys.Ascending(i => i.RoomId),
+                new CreateIndexOptions { Name = "idx_roomId" })
         ], ct);
     }
 

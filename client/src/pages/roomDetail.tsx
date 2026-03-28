@@ -1,13 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRoomDetail, useJoinRoom, useLeaveRoom, useCloseRoom } from '@/features/rooms/hooks';
+import { useRoomDetail, useJoinRoom, useLeaveRoom, useCloseRoom, useInviteToRoom } from '@/features/rooms/hooks';
 import { useChatConnection, useChatHistory } from '@/features/chat/hooks';
 import { useBlockedUsers } from '@/features/blocks/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Badge, Card, AnimatedPage, Spinner, Modal } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { ChatPanel } from '@/components/chat';
+import { discoverPlayers } from '@/features/users/api';
+import type { DiscoverPlayerResponse } from '@/features/users/types';
+import { useToast } from '@/components/ui/toast';
 
 const statusColors: Record<string, 'success' | 'warning' | 'primary' | 'danger' | 'default'> = {
   Open: 'success',
@@ -26,8 +29,12 @@ export default function RoomDetailPage() {
   const leaveRoom = useLeaveRoom();
   const closeRoom = useCloseRoom();
 
+  const inviteToRoom = useInviteToRoom();
+  const { addToast } = useToast();
+
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const isMember = room?.members.some((m) => m.userId === user?.id);
 
@@ -163,6 +170,7 @@ export default function RoomDetailPage() {
             onlineUsers={chat.onlineUsers}
             isMember={isMember}
             blockedIds={blockedIds}
+            onInvite={() => setShowInviteModal(true)}
           />
         </div>
 
@@ -187,6 +195,16 @@ export default function RoomDetailPage() {
             </Button>
           </div>
         </Modal>
+
+        {showInviteModal && roomId && (
+          <InvitePlayerModal
+            roomId={roomId}
+            memberIds={room?.members.map((m) => m.userId) ?? []}
+            inviteMutation={inviteToRoom}
+            onClose={() => setShowInviteModal(false)}
+            addToast={addToast}
+          />
+        )}
       </div>
     </AnimatedPage>
   );
@@ -279,11 +297,13 @@ function RoomSidebar({
   onlineUsers,
   isMember,
   blockedIds,
+  onInvite,
 }: {
-  room: { members: { userId: string; username: string; role: string; joinedAt: string }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null };
+  room: { members: { userId: string; username: string; role: string; joinedAt: string }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null; status: string };
   onlineUsers: { userId: string; username: string }[];
   isMember: boolean | undefined;
   blockedIds: Set<string>;
+  onInvite: () => void;
 }) {
   const onlineIds = new Set(onlineUsers.map((u) => u.userId));
 
@@ -329,9 +349,22 @@ function RoomSidebar({
 
       {/* All members */}
       <Card>
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
-          Members &middot; {room.members.length}
-        </h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+            Members &middot; {room.members.length}
+          </h3>
+          {isMember && room.status !== 'Closed' && (
+            <button
+              onClick={onInvite}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+              </svg>
+              Invite
+            </button>
+          )}
+        </div>
         <div className="space-y-2">
           {room.members.map((member, i) => (
             <motion.div
@@ -391,5 +424,109 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <span className="text-foreground-subtle">{label}</span>
       <span className="text-foreground">{value}</span>
     </div>
+  );
+}
+
+/* ─── Invite Player Modal ─── */
+
+function InvitePlayerModal({
+  roomId,
+  memberIds,
+  inviteMutation,
+  onClose,
+  addToast,
+}: {
+  roomId: string;
+  memberIds: string[];
+  inviteMutation: ReturnType<typeof useInviteToRoom>;
+  onClose: () => void;
+  addToast: (t: { title: string; type: 'success' | 'error' | 'info' }) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [results, setResults] = useState<DiscoverPlayerResponse[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
+  const memberSet = useMemo(() => new Set(memberIds), [memberIds]);
+
+  const handleSearch = async () => {
+    if (search.trim().length < 2) return;
+    setSearching(true);
+    try {
+      const data = await discoverPlayers({ search: search.trim(), pageSize: 10 });
+      setResults(data.items.filter((p) => !memberSet.has(p.id)));
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleInvite = async (userId: string) => {
+    try {
+      await inviteMutation.mutateAsync({ roomId, userId });
+      setInvitedIds((prev) => new Set(prev).add(userId));
+      addToast({ title: 'Invite sent!', type: 'success' });
+    } catch {
+      addToast({ title: 'Could not send invite', type: 'error' });
+    }
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Invite Player">
+      <div className="space-y-4">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Search by username..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="flex-1 rounded-lg border border-border bg-surface-hover px-3 py-2 text-sm text-foreground placeholder:text-foreground-subtle focus:outline-none focus:ring-2 focus:ring-primary/50"
+            autoFocus
+          />
+          <Button size="sm" onClick={handleSearch} isLoading={searching}>
+            Search
+          </Button>
+        </div>
+
+        {searching && (
+          <div className="flex justify-center py-4">
+            <Spinner size="sm" />
+          </div>
+        )}
+
+        {!searching && results.length > 0 && (
+          <div className="max-h-60 space-y-2 overflow-y-auto">
+            {results.map((player) => (
+              <div key={player.id} className="flex items-center gap-3 rounded-lg border border-border p-2">
+                <UserAvatar username={player.username} avatarUrl={player.avatarUrl} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{player.username}</p>
+                  {player.region && (
+                    <p className="text-xs text-foreground-muted">{player.region}</p>
+                  )}
+                </div>
+                {invitedIds.has(player.id) ? (
+                  <Badge variant="success">Invited</Badge>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleInvite(player.id)}
+                    isLoading={inviteMutation.isPending}
+                  >
+                    Invite
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!searching && results.length === 0 && search.length >= 2 && (
+          <p className="text-center text-sm text-foreground-muted py-4">No players found</p>
+        )}
+      </div>
+    </Modal>
   );
 }

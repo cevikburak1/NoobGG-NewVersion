@@ -27,7 +27,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     });
 
     conn.onreconnecting(() => {});
-    conn.onreconnected(() => {});
+    conn.onreconnected(() => {
+      void qc.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+    });
     conn.onclose(() => {});
 
     startConnection(conn).catch(() => {});

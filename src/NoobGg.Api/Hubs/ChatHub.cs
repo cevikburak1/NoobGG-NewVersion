@@ -19,6 +19,8 @@ public class ChatHub : Hub<IChatClient>
     private readonly IMongoContext _mongoContext;
     private readonly IChatPresenceService _presenceService;
 
+    private const int MaxMessageLength = 2000;
+
     public ChatHub(
         ILogger<ChatHub> logger,
         IMongoContext mongoContext,
@@ -31,40 +33,44 @@ public class ChatHub : Hub<IChatClient>
 
     public override async Task OnConnectedAsync()
     {
-        _logger.LogInformation("User {UserId} connected to ChatHub", GetUserId());
+        _logger.LogInformation("User {UserId} connected to ChatHub (conn: {ConnId})",
+            GetUserId(), Context.ConnectionId);
         await base.OnConnectedAsync();
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = GetUserId();
-        _logger.LogInformation("User {UserId} disconnected from ChatHub", userId);
+        var username = GetUsername();
+        var connectionId = Context.ConnectionId;
+
+        _logger.LogInformation("User {UserId} disconnected from ChatHub (conn: {ConnId})", userId, connectionId);
 
         var rooms = await _presenceService.GetUserRoomsAsync(userId);
 
         foreach (var roomId in rooms)
         {
-            await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
+            await Groups.RemoveFromGroupAsync(connectionId, roomId);
 
-            await Clients.Group(roomId).UserLeft(new ChatPresenceEvent
+            bool fullyLeft = await _presenceService.TrackUserLeftRoomAsync(roomId, userId, connectionId);
+
+            if (fullyLeft)
             {
-                UserId = userId,
-                Username = GetUsername(),
-                RoomId = roomId,
-                Timestamp = DateTime.UtcNow
-            });
+                await Clients.Group(roomId).UserLeft(new ChatPresenceEvent
+                {
+                    UserId = userId,
+                    Username = username,
+                    RoomId = roomId,
+                    Timestamp = DateTime.UtcNow
+                });
 
-            await BroadcastRoomPresenceAsync(roomId);
+                await BroadcastRoomPresenceAsync(roomId);
+            }
         }
-
-        await _presenceService.RemoveUserFromAllRoomsAsync(userId);
 
         await base.OnDisconnectedAsync(exception);
     }
 
-    /// <summary>
-    /// Join a room's chat channel. Only room members can join.
-    /// </summary>
     public async Task JoinRoom(string roomId)
     {
         var userId = GetUserId();
@@ -77,7 +83,7 @@ public class ChatHub : Hub<IChatClient>
         }
 
         await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
-        await _presenceService.TrackUserJoinedRoomAsync(roomId, userId, username);
+        await _presenceService.TrackUserJoinedRoomAsync(roomId, userId, username, Context.ConnectionId);
 
         await Clients.Group(roomId).UserJoined(new ChatPresenceEvent
         {
@@ -89,36 +95,35 @@ public class ChatHub : Hub<IChatClient>
 
         await BroadcastRoomPresenceAsync(roomId);
 
-        _logger.LogInformation("User {UserId} joined chat for room {RoomId}", userId, roomId);
+        _logger.LogInformation("User {UserId} joined chat for room {RoomId} (conn: {ConnId})",
+            userId, roomId, Context.ConnectionId);
     }
 
-    /// <summary>
-    /// Leave a room's chat channel.
-    /// </summary>
     public async Task LeaveRoom(string roomId)
     {
         var userId = GetUserId();
         var username = GetUsername();
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
-        await _presenceService.TrackUserLeftRoomAsync(roomId, userId);
+        bool fullyLeft = await _presenceService.TrackUserLeftRoomAsync(roomId, userId, Context.ConnectionId);
 
-        await Clients.Group(roomId).UserLeft(new ChatPresenceEvent
+        if (fullyLeft)
         {
-            UserId = userId,
-            Username = username,
-            RoomId = roomId,
-            Timestamp = DateTime.UtcNow
-        });
+            await Clients.Group(roomId).UserLeft(new ChatPresenceEvent
+            {
+                UserId = userId,
+                Username = username,
+                RoomId = roomId,
+                Timestamp = DateTime.UtcNow
+            });
 
-        await BroadcastRoomPresenceAsync(roomId);
+            await BroadcastRoomPresenceAsync(roomId);
+        }
 
-        _logger.LogInformation("User {UserId} left chat for room {RoomId}", userId, roomId);
+        _logger.LogInformation("User {UserId} left chat for room {RoomId} (conn: {ConnId})",
+            userId, roomId, Context.ConnectionId);
     }
 
-    /// <summary>
-    /// Send a message to a room. Message is persisted and broadcast to all room members.
-    /// </summary>
     public async Task SendMessage(string roomId, string content)
     {
         var userId = GetUserId();
@@ -126,6 +131,9 @@ public class ChatHub : Hub<IChatClient>
 
         if (string.IsNullOrWhiteSpace(content))
             return;
+
+        if (content.Length > MaxMessageLength)
+            throw new HubException($"Message exceeds maximum length of {MaxMessageLength} characters");
 
         if (!await IsRoomMemberAsync(roomId, userId))
         {
@@ -167,9 +175,6 @@ public class ChatHub : Hub<IChatClient>
         _logger.LogDebug("Message sent by {UserId} in room {RoomId}", userId, roomId);
     }
 
-    /// <summary>
-    /// Broadcast that the user started typing. Frontend should auto-clear after ~5s timeout.
-    /// </summary>
     public async Task StartTyping(string roomId)
     {
         var userId = GetUserId();
@@ -183,9 +188,6 @@ public class ChatHub : Hub<IChatClient>
         });
     }
 
-    /// <summary>
-    /// Broadcast that the user stopped typing.
-    /// </summary>
     public async Task StopTyping(string roomId)
     {
         var userId = GetUserId();

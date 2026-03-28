@@ -59,3 +59,40 @@ export function useCloseRoom() {
     },
   });
 }
+
+export function useInviteToRoom() {
+  return useMutation({
+    mutationFn: ({ roomId, userId }: { roomId: string; userId: string }) =>
+      roomsApi.inviteToRoom(roomId, userId),
+  });
+}
+
+export function usePendingInvites() {
+  return useQuery({
+    queryKey: queryKeys.rooms.invites(),
+    queryFn: roomsApi.getPendingInvites,
+  });
+}
+
+export function useAcceptInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: roomsApi.acceptInvite,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.invites() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() });
+    },
+  });
+}
+
+export function useDeclineInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: roomsApi.declineInvite,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.invites() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() });
+    },
+  });
+}

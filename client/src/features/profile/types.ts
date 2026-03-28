@@ -25,6 +25,7 @@ export interface ProfileDetailResponse {
   friendshipStatus: string | null;
   friendshipId: string | null;
   isFriendRequestSentByMe: boolean;
+  isFavorited: boolean;
 }
 
 export interface ProfileStats {

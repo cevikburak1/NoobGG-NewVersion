@@ -10,6 +10,7 @@ export const queryKeys = {
     all: () => ['rooms'] as const,
     list: (filters: RoomFilters) => ['rooms', 'list', filters] as const,
     detail: (id: string) => ['rooms', 'detail', id] as const,
+    invites: () => ['rooms', 'invites'] as const,
   },
   chat: {
     messages: (roomId: string) => ['chat', 'messages', roomId] as const,
@@ -53,5 +54,8 @@ export const queryKeys = {
   },
   settings: {
     me: () => ['settings', 'me'] as const,
+  },
+  favorites: {
+    list: () => ['favorites'] as const,
   },
 } as const;

@@ -30,6 +30,7 @@ public record ProfileDetailResponse
     public string? FriendshipStatus { get; init; }
     public string? FriendshipId { get; init; }
     public bool IsFriendRequestSentByMe { get; init; }
+    public bool IsFavorited { get; init; }
 }
 
 public record ProfileStats

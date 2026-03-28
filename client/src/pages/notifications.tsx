@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/features/notifications/hooks';
+import { useAcceptInvite, useDeclineInvite } from '@/features/rooms/hooks';
 import { Button, Badge } from '@/components/ui';
 import type { NotificationResponse, NotificationType } from '@/features/notifications/types';
+import { useToast } from '@/components/ui/toast';
 
 const FILTER_OPTIONS = [
   { label: 'All', value: undefined },
@@ -31,6 +33,9 @@ export default function NotificationsPage() {
   const { data, isLoading, isError } = useNotifications({ unreadOnly, page, pageSize });
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
+  const acceptInvite = useAcceptInvite();
+  const declineInvite = useDeclineInvite();
+  const { addToast } = useToast();
 
   const handleMarkRead = (id: string) => {
     markRead.mutate(id);
@@ -102,6 +107,25 @@ export default function NotificationsPage() {
                   notification={notification}
                   onMarkRead={handleMarkRead}
                   isPending={markRead.isPending}
+                  onAcceptInvite={async (inviteId) => {
+                    try {
+                      await acceptInvite.mutateAsync(inviteId);
+                      handleMarkRead(notification.id);
+                      addToast({ title: 'Invite accepted!', type: 'success' });
+                    } catch {
+                      addToast({ title: 'Could not accept invite', type: 'error' });
+                    }
+                  }}
+                  onDeclineInvite={async (inviteId) => {
+                    try {
+                      await declineInvite.mutateAsync(inviteId);
+                      handleMarkRead(notification.id);
+                      addToast({ title: 'Invite declined', type: 'info' });
+                    } catch {
+                      addToast({ title: 'Could not decline invite', type: 'error' });
+                    }
+                  }}
+                  inviteActionPending={acceptInvite.isPending || declineInvite.isPending}
                 />
               ))}
             </AnimatePresence>
@@ -140,13 +164,20 @@ function NotificationItem({
   notification,
   onMarkRead,
   isPending,
+  onAcceptInvite,
+  onDeclineInvite,
+  inviteActionPending,
 }: {
   notification: NotificationResponse;
   onMarkRead: (id: string) => void;
   isPending: boolean;
+  onAcceptInvite: (inviteId: string) => void;
+  onDeclineInvite: (inviteId: string) => void;
+  inviteActionPending: boolean;
 }) {
   const meta = TYPE_META[notification.type] ?? TYPE_META.SystemMessage;
   const linkTarget = getNotificationLink(notification);
+  const isRoomInvite = notification.type === 'RoomInvite' && !notification.isRead && notification.data?.inviteId;
 
   const content = (
     <motion.div
@@ -173,6 +204,39 @@ function NotificationItem({
           )}
         </div>
         <p className="mt-0.5 text-sm text-foreground-muted line-clamp-2">{notification.body}</p>
+
+        {isRoomInvite && (
+          <div className="mt-2 flex gap-2">
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onAcceptInvite(notification.data!.inviteId);
+              }}
+              isLoading={inviteActionPending}
+              className="gap-1.5"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+              Accept
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDeclineInvite(notification.data!.inviteId);
+              }}
+              isLoading={inviteActionPending}
+            >
+              Decline
+            </Button>
+          </div>
+        )}
+
         <div className="mt-2 flex items-center gap-3">
           <time className="text-xs text-foreground-muted/60">
             {formatRelativeTime(notification.createdAt)}

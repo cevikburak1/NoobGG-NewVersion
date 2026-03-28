@@ -1,10 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NoobGg.Application.Features.Rooms.Commands.AcceptRoomInvite;
 using NoobGg.Application.Features.Rooms.Commands.CloseRoom;
 using NoobGg.Application.Features.Rooms.Commands.CreateRoom;
+using NoobGg.Application.Features.Rooms.Commands.DeclineRoomInvite;
+using NoobGg.Application.Features.Rooms.Commands.InviteToRoom;
 using NoobGg.Application.Features.Rooms.Commands.JoinRoom;
 using NoobGg.Application.Features.Rooms.Commands.KickMember;
 using NoobGg.Application.Features.Rooms.Commands.LeaveRoom;
+using NoobGg.Application.Features.Rooms.Queries.GetPendingInvites;
 using NoobGg.Application.Features.Rooms.Queries.GetRoomDetails;
 using NoobGg.Application.Features.Rooms.Queries.GetRooms;
 using NoobGg.Domain.Enums;
@@ -82,6 +86,34 @@ public class RoomsController : ApiControllerBase
     public async Task<IActionResult> Close(string id)
     {
         var result = await Mediator.Send(new CloseRoomCommand { RoomId = id });
+        return HandleResult(result);
+    }
+
+    [HttpPost("{id}/invite/{userId}")]
+    public async Task<IActionResult> Invite(string id, string userId)
+    {
+        var result = await Mediator.Send(new InviteToRoomCommand { RoomId = id, InvitedUserId = userId });
+        return HandleResult(result);
+    }
+
+    [HttpGet("invites")]
+    public async Task<IActionResult> GetPendingInvites()
+    {
+        var result = await Mediator.Send(new GetPendingInvitesQuery());
+        return HandleResult(result);
+    }
+
+    [HttpPost("invites/{inviteId}/accept")]
+    public async Task<IActionResult> AcceptInvite(string inviteId)
+    {
+        var result = await Mediator.Send(new AcceptRoomInviteCommand { InviteId = inviteId });
+        return HandleResult(result);
+    }
+
+    [HttpPost("invites/{inviteId}/decline")]
+    public async Task<IActionResult> DeclineInvite(string inviteId)
+    {
+        var result = await Mediator.Send(new DeclineRoomInviteCommand { InviteId = inviteId });
         return HandleResult(result);
     }
 }

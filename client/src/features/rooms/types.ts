@@ -42,3 +42,16 @@ export interface CreateRoomRequest {
   maxMembers?: number;
   tags?: string[];
 }
+
+export interface RoomInviteResponse {
+  id: string;
+  roomId: string;
+  roomTitle: string;
+  gameName: string | null;
+  gameImageUrl: string | null;
+  inviterId: string;
+  inviterUsername: string;
+  inviterAvatarUrl: string | null;
+  status: string;
+  createdAt: string;
+}

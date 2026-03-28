@@ -23,6 +23,7 @@ import VerifyEmailPage from '@/pages/verifyEmail';
 import OnboardingPage from '@/pages/onboarding';
 import MessagesPage from '@/pages/messages';
 import FriendsPage from '@/pages/friends';
+import FavoritesPage from '@/pages/favorites';
 
 const routes: RouteObject[] = [
   {
@@ -138,6 +139,16 @@ const routes: RouteObject[] = [
           <ProtectedRoute>
             <RequireProfile>
               <FriendsPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/favorites',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <FavoritesPage />
             </RequireProfile>
           </ProtectedRoute>
         ),

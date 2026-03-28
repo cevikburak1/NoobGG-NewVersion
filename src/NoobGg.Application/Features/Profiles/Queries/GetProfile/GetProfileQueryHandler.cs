@@ -148,6 +148,7 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
         string? friendshipStatus = null;
         string? friendshipId = null;
         var isFriendRequestSentByMe = false;
+        var isFavorited = false;
 
         if (_currentUser.IsAuthenticated && !isOwnProfile && _currentUser.UserId is not null)
         {
@@ -167,6 +168,11 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
                 friendshipId = friendship.Id;
                 isFriendRequestSentByMe = friendship.RequesterId == _currentUser.UserId;
             }
+
+            var favorites = _mongoContext.GetCollection<Favorite>(CollectionNames.Favorites);
+            isFavorited = await favorites.Find(f =>
+                f.UserId == _currentUser.UserId && f.FavoriteUserId == request.UserId
+            ).AnyAsync(ct);
         }
 
         return Result<ProfileDetailResponse>.Success(new ProfileDetailResponse
@@ -201,7 +207,8 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
             IsBlockedByThem = isBlockedByThem,
             FriendshipStatus = friendshipStatus,
             FriendshipId = friendshipId,
-            IsFriendRequestSentByMe = isFriendRequestSentByMe
+            IsFriendRequestSentByMe = isFriendRequestSentByMe,
+            IsFavorited = isFavorited
         });
     }
 
