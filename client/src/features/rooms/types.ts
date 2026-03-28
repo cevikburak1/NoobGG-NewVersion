@@ -18,6 +18,7 @@ export interface RoomResponse {
 export interface RoomMemberResponse {
   userId: string;
   username: string;
+  avatarUrl: string | null;
   role: string;
   joinedAt: string;
 }

@@ -17,7 +17,7 @@ async function bootstrap() {
       const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, {
         token: refreshToken,
       });
-      useAuthStore.getState().login(data.user, data.accessToken, data.refreshToken);
+      useAuthStore.getState().login(data.user, data.accessToken, data.refreshToken, data.isDeactivated);
     } catch {
       sessionStorage.removeItem(REFRESH_TOKEN_KEY);
       localStorage.removeItem(REFRESH_TOKEN_KEY);

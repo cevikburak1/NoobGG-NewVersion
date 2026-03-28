@@ -5,6 +5,7 @@ using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Common.Models;
 using NoobGg.Application.Features.DirectMessages.DTOs;
 using NoobGg.Domain.Entities;
+using NoobGg.Domain.Enums;
 
 namespace NoobGg.Application.Features.DirectMessages.Commands.CreateConversation;
 
@@ -47,7 +48,6 @@ public class CreateConversationCommandHandler
         if (isBlocked)
             return Result<ConversationResponse>.Fail("Cannot message this user");
 
-        // Always store sorted so the unique index works regardless of who initiates
         var sortedIds = new[] { userId, request.ParticipantId }.OrderBy(id => id, StringComparer.Ordinal).ToArray();
         var p1 = sortedIds[0];
         var p2 = sortedIds[1];
@@ -75,6 +75,28 @@ public class CreateConversationCommandHandler
                 LastMessageAt = existing.LastMessageAt,
                 UnreadCount = unread
             });
+        }
+
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        var partnerSettings = await settingsCol.Find(s => s.UserId == request.ParticipantId).FirstOrDefaultAsync(ct);
+
+        if (partnerSettings is not null)
+        {
+            switch (partnerSettings.DmPermission)
+            {
+                case DmPermission.Nobody:
+                    return Result<ConversationResponse>.Fail("This user is not accepting direct messages");
+                case DmPermission.FriendsOnly:
+                    var friendships = _mongoContext.GetCollection<Friendship>(CollectionNames.Friendships);
+                    var areFriends = await friendships.Find(f =>
+                        f.Status == FriendshipStatus.Accepted &&
+                        ((f.RequesterId == userId && f.AddresseeId == request.ParticipantId) ||
+                         (f.RequesterId == request.ParticipantId && f.AddresseeId == userId))
+                    ).AnyAsync(ct);
+                    if (!areFriends)
+                        return Result<ConversationResponse>.Fail("This user only accepts messages from friends");
+                    break;
+            }
         }
 
         var conv = new Conversation

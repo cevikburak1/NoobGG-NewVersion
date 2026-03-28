@@ -43,8 +43,15 @@ export const queryKeys = {
   blocks: {
     list: () => ['blocks'] as const,
   },
+  friends: {
+    list: () => ['friends'] as const,
+    requests: () => ['friends', 'requests'] as const,
+  },
   notifications: {
     list: (params?: Record<string, unknown>) => ['notifications', 'list', params] as const,
     unreadCount: () => ['notifications', 'unread'] as const,
+  },
+  settings: {
+    me: () => ['settings', 'me'] as const,
   },
 } as const;

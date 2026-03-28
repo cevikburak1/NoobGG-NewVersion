@@ -3,6 +3,7 @@ export interface ChatMessageResponse {
   roomId: string;
   senderId: string;
   senderUsername: string;
+  senderAvatarUrl?: string | null;
   content: string;
   type: string;
   isEdited: boolean;
@@ -32,6 +33,7 @@ export interface RoomPresenceResponse {
 export interface OnlineUser {
   userId: string;
   username: string;
+  avatarUrl?: string | null;
 }
 
 export interface MessageDeletedEvent {

@@ -53,6 +53,7 @@ public class MongoIndexInitializer : IHostedService
         await CreateEmailVerificationTokenIndexes(ct);
         await CreateConversationIndexes(ct);
         await CreateDirectMessageIndexes(ct);
+        await CreateUserSettingsIndexes(ct);
     }
 
     private async Task CreateUserIndexes(CancellationToken ct)
@@ -413,6 +414,16 @@ public class MongoIndexInitializer : IHostedService
             new CreateIndexModel<DirectMessage>(
                 Builders<DirectMessage>.IndexKeys.Ascending(m => m.SenderId),
                 new CreateIndexOptions { Name = "idx_senderId" })
+        ], ct);
+    }
+
+    private async Task CreateUserSettingsIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<UserSettings>(
+                Builders<UserSettings>.IndexKeys.Ascending(s => s.UserId),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_unique" })
         ], ct);
     }
 

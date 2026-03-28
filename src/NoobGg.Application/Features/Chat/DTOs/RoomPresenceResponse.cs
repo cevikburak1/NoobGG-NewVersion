@@ -11,4 +11,5 @@ public record OnlineUserInfo
 {
     public string UserId { get; init; } = string.Empty;
     public string Username { get; init; } = string.Empty;
+    public string? AvatarUrl { get; init; }
 }

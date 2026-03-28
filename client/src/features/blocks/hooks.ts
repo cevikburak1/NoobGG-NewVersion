@@ -9,13 +9,21 @@ export function useBlockedUsers() {
   });
 }
 
+async function invalidateBlockRelatedCaches(qc: ReturnType<typeof useQueryClient>) {
+  await Promise.all([
+    qc.invalidateQueries({ queryKey: queryKeys.blocks.list() }),
+    qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() }),
+    qc.invalidateQueries({ queryKey: ['users'] }),
+    qc.invalidateQueries({ queryKey: ['profile'] }),
+    qc.invalidateQueries({ queryKey: queryKeys.rooms.all() }),
+  ]);
+}
+
 export function useBlockUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: blockUser,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.blocks.list() });
-    },
+    onSuccess: () => invalidateBlockRelatedCaches(queryClient),
   });
 }
 
@@ -23,8 +31,6 @@ export function useUnblockUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: unblockUser,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.blocks.list() });
-    },
+    onSuccess: () => invalidateBlockRelatedCaches(queryClient),
   });
 }

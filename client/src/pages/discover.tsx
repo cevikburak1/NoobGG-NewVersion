@@ -126,30 +126,28 @@ export default function DiscoverPage() {
         {/* Hero Section */}
         <div ref={heroRef} className="relative -mx-4 -mt-4 overflow-hidden lg:-mx-8">
           <motion.div style={{ opacity: heroOpacity }} className="absolute inset-0 bg-linear-to-br from-primary/8 via-accent/5 to-transparent" />
-          <div className="relative px-4 pb-6 pt-8 lg:px-8">
-            <div className="mx-auto max-w-4xl text-center">
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-4xl font-extrabold tracking-tight text-foreground lg:text-5xl"
-              >
-                Discover
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="mx-auto mt-3 max-w-lg text-foreground-muted"
-              >
-                Find players and games that match your style
-              </motion.p>
+          <div className="relative px-4 pb-4 pt-6 lg:px-8">
+            <div className="mx-auto max-w-4xl">
+              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                  <h1 className="text-3xl font-bold tracking-tight text-foreground">Discover</h1>
+                  <p className="mt-1 text-sm text-foreground-muted">Find players and games that match your style</p>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="flex items-center gap-4"
+                >
+                  <StatPill icon="🎮" label="Games" value={totalGames} />
+                  <StatPill icon="👥" label="Players" value={totalPlayers} />
+                </motion.div>
+              </div>
 
-              {/* Search Bar */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="mx-auto mt-6 max-w-xl"
+                className="mt-4 max-w-xl"
               >
                 <div className="relative">
                   <svg className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-subtle" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -159,20 +157,9 @@ export default function DiscoverPage() {
                     placeholder={activeTab === 'players' ? 'Search players by username...' : 'Search games...'}
                     value={searchQuery}
                     onChange={(e) => handleSearchChange(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-surface/80 py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-foreground-subtle backdrop-blur-sm transition-colors focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-lg border border-border bg-surface/80 py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-foreground-subtle backdrop-blur-sm transition-colors focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
-              </motion.div>
-
-              {/* Stats */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="mt-5 flex items-center justify-center gap-6"
-              >
-                <StatPill icon="🎮" label="Games" value={totalGames} />
-                <StatPill icon="👥" label="Players" value={totalPlayers} />
               </motion.div>
             </div>
           </div>
@@ -230,7 +217,7 @@ export default function DiscoverPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="relative z-20 rounded-xl border border-border/50 bg-surface/60 p-4 backdrop-blur-sm"
+          className="relative z-20 rounded-xl border border-border/70 bg-surface/80 p-4 backdrop-blur-sm"
         >
           <AnimatePresence mode="wait">
             {activeTab === 'games' ? (
@@ -333,7 +320,7 @@ export default function DiscoverPage() {
           {activeTab === 'games' ? (
             <motion.div key="games" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {gamesLoading ? (
-                <LoadingSpinner />
+                <LoadingGrid />
               ) : gamesResult && gamesResult.items.length > 0 ? (
                 <>
                   <motion.div
@@ -358,13 +345,13 @@ export default function DiscoverPage() {
                   />
                 </>
               ) : (
-                <EmptyState icon="🎮" title="No games found" subtitle="Try a different search term or genre" />
+                <DiscoverEmpty icon="🎮" title="No games found" subtitle="Try a different search term or genre" />
               )}
             </motion.div>
           ) : (
             <motion.div key="players" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               {playersLoading ? (
-                <LoadingSpinner />
+                <LoadingPlayerGrid />
               ) : playersResult && playersResult.items.length > 0 ? (
                 <>
                   <motion.div
@@ -387,7 +374,7 @@ export default function DiscoverPage() {
                   />
                 </>
               ) : (
-                <EmptyState
+                <DiscoverEmpty
                   icon="🔍"
                   title="No players found"
                   subtitle={playersResult?.totalCount === 0 ? 'No registered players yet' : 'Try adjusting your filters'}
@@ -403,38 +390,65 @@ export default function DiscoverPage() {
 
 function StatPill({ icon, label, value }: { icon: string; label: string; value: number }) {
   return (
-    <div className="flex items-center gap-2 rounded-full border border-border/50 bg-surface/60 px-4 py-1.5 backdrop-blur-sm">
-      <span className="text-sm">{icon}</span>
-      <span className="text-xs text-foreground-muted">{label}</span>
-      <span className="text-sm font-bold text-foreground">{value.toLocaleString()}</span>
+    <div className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-surface/60 px-3 py-1.5 backdrop-blur-sm">
+      <span className="text-xs">{icon}</span>
+      <span className="text-xs text-foreground-subtle">{label}</span>
+      <span className="text-xs font-bold text-foreground">{value.toLocaleString()}</span>
     </div>
   );
 }
 
-function LoadingSpinner() {
+function LoadingGrid() {
   return (
-    <div className="flex justify-center py-20">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-        className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent"
-      />
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="animate-pulse rounded-xl border border-border bg-surface overflow-hidden">
+          <div className="aspect-video bg-surface-hover" />
+          <div className="p-4 space-y-3">
+            <div className="h-4 w-3/4 rounded bg-surface-hover" />
+            <div className="flex gap-1.5">
+              <div className="h-5 w-14 rounded-full bg-surface-hover" />
+              <div className="h-5 w-16 rounded-full bg-surface-hover" />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function EmptyState({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+function LoadingPlayerGrid() {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="animate-pulse rounded-xl border border-border bg-surface overflow-hidden">
+          <div className="h-20 bg-surface-hover" />
+          <div className="px-5 pb-5 pt-8 space-y-3">
+            <div className="h-4 w-1/2 rounded bg-surface-hover" />
+            <div className="h-3 w-full rounded bg-surface-hover" />
+            <div className="flex gap-1.5">
+              <div className="h-5 w-16 rounded-full bg-surface-hover" />
+              <div className="h-5 w-12 rounded-full bg-surface-hover" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DiscoverEmpty({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="flex flex-col items-center py-20 text-center"
+      className="flex flex-col items-center py-16 text-center"
     >
-      <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="text-5xl">
-        {icon}
-      </motion.div>
-      <h3 className="mt-4 text-lg font-bold text-foreground">{title}</h3>
-      <p className="mt-1.5 text-sm text-foreground-muted">{subtitle}</p>
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-surface-hover/80">
+        <span className="text-3xl">{icon}</span>
+      </div>
+      <h3 className="mt-4 text-lg font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 text-sm text-foreground-muted">{subtitle}</p>
     </motion.div>
   );
 }
@@ -551,30 +565,45 @@ function PlayerCard({ player }: { player: DiscoverPlayerResponse }) {
         <motion.div
           whileHover={{ y: -4, scale: 1.01 }}
           transition={{ duration: 0.2 }}
-          className="group relative overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary/30"
+          className={`group relative overflow-hidden rounded-xl border bg-surface transition-colors ${
+            player.isBlockedByMe
+              ? 'border-danger/30 hover:border-danger/50'
+              : 'border-border hover:border-primary/30'
+          }`}
         >
-          {/* Card Header with gradient */}
+          {player.isBlockedByMe && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[2px]">
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-3xl">🚫</span>
+                <span className="rounded-full bg-danger/10 px-3 py-1 text-xs font-bold text-danger border border-danger/20">
+                  Blocked
+                </span>
+                <span className="text-[10px] text-foreground-muted">Click to manage</span>
+              </div>
+            </div>
+          )}
+
           <div className="relative h-20 overflow-hidden bg-linear-to-br from-primary/15 via-accent/10 to-surface">
             <div className="absolute inset-0 bg-linear-to-b from-transparent to-surface" />
-            {player.lookingForTeam && (
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="absolute right-3 top-3"
-              >
+            <div className="absolute right-3 top-3 flex gap-1.5">
+              {player.friendshipStatus === 'Accepted' && (
+                <Badge variant="success" className="border border-green-500/30 shadow-sm">✓ Friends</Badge>
+              )}
+              {player.friendshipStatus === 'Pending' && (
+                <Badge className="border border-border shadow-sm">⏳ Pending</Badge>
+              )}
+              {player.lookingForTeam && (
                 <Badge variant="accent" className="border border-accent/30 shadow-sm">🎯 LFT</Badge>
-              </motion.div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Avatar */}
           <div className="relative -mt-8 px-5">
             <motion.div whileHover={{ scale: 1.1 }} className="inline-block rounded-full border-2 border-surface p-0.5">
               <UserAvatar username={player.username} avatarUrl={player.avatarUrl} size="lg" />
             </motion.div>
           </div>
 
-          {/* Content */}
           <div className="px-5 pb-5 pt-2">
             <h3 className="text-base font-bold text-foreground">{player.username}</h3>
 
@@ -582,7 +611,6 @@ function PlayerCard({ player }: { player: DiscoverPlayerResponse }) {
               <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-foreground-muted">{player.bio}</p>
             )}
 
-            {/* Info Badges */}
             <div className="mt-3 flex flex-wrap gap-1.5">
               {player.experienceLevel && meta && (
                 <Badge variant={meta.color}>
@@ -598,7 +626,6 @@ function PlayerCard({ player }: { player: DiscoverPlayerResponse }) {
               )}
             </div>
 
-            {/* Games Section */}
             {player.games.length > 0 && (
               <div className="mt-3 space-y-1.5">
                 {player.games.slice(0, 3).map((game) => (
@@ -622,7 +649,6 @@ function PlayerCard({ player }: { player: DiscoverPlayerResponse }) {
               </div>
             )}
 
-            {/* Footer */}
             <div className="mt-4 flex justify-end">
               <span className="text-xs font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
                 View Profile →

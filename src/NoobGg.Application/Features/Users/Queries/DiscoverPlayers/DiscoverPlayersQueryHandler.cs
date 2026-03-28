@@ -7,16 +7,19 @@ using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Common.Models;
 using NoobGg.Application.Features.Users.DTOs;
 using NoobGg.Domain.Entities;
+using NoobGg.Domain.Enums;
 
 namespace NoobGg.Application.Features.Users.Queries.DiscoverPlayers;
 
 public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery, Result<PagedResult<DiscoverPlayerResponse>>>
 {
     private readonly IMongoContext _mongoContext;
+    private readonly ICurrentUser _currentUser;
 
-    public DiscoverPlayersQueryHandler(IMongoContext mongoContext)
+    public DiscoverPlayersQueryHandler(IMongoContext mongoContext, ICurrentUser currentUser)
     {
         _mongoContext = mongoContext;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<PagedResult<DiscoverPlayerResponse>>> Handle(DiscoverPlayersQuery request, CancellationToken ct)
@@ -25,6 +28,38 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
         var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
         var gameProfiles = _mongoContext.GetCollection<UserGameProfile>(CollectionNames.UserGameProfiles);
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
+        var blocksCol = _mongoContext.GetCollection<Block>(CollectionNames.Blocks);
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+
+        var blockedByMeIds = new HashSet<string>();
+        var blockedMeIds = new HashSet<string>();
+        if (_currentUser.IsAuthenticated && _currentUser.UserId is not null)
+        {
+            var myId = _currentUser.UserId;
+            var blockList = await blocksCol.Find(b =>
+                b.BlockerId == myId || b.BlockedUserId == myId
+            ).ToListAsync(ct);
+
+            foreach (var b in blockList)
+            {
+                if (b.BlockerId == myId)
+                    blockedByMeIds.Add(b.BlockedUserId);
+                else
+                    blockedMeIds.Add(b.BlockerId);
+            }
+        }
+
+        var deactivatedSettings = await settingsCol
+            .Find(s => s.IsDeactivated)
+            .Project(s => s.UserId)
+            .ToListAsync(ct);
+        var deactivatedIds = new HashSet<string>(deactivatedSettings);
+
+        var privateSettings = await settingsCol
+            .Find(s => s.ProfileVisibility == ProfileVisibility.Private)
+            .Project(s => s.UserId)
+            .ToListAsync(ct);
+        var privateIds = new HashSet<string>(privateSettings);
 
         var userFilters = new List<FilterDefinition<User>>
         {
@@ -37,6 +72,16 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
             var term = Regex.Escape(request.Search.Trim().ToLowerInvariant());
             userFilters.Add(Builders<User>.Filter.Regex(u => u.Username, new BsonRegularExpression(term, "i")));
         }
+
+        var excludeIds = new HashSet<string>(blockedMeIds);
+        excludeIds.UnionWith(deactivatedIds);
+        excludeIds.UnionWith(privateIds);
+
+        if (_currentUser.IsAuthenticated && _currentUser.UserId is not null)
+            excludeIds.Add(_currentUser.UserId);
+
+        if (excludeIds.Count > 0)
+            userFilters.Add(Builders<User>.Filter.Nin(u => u.Id, excludeIds));
 
         var userFilter = Builders<User>.Filter.And(userFilters);
         var totalCount = await users.CountDocumentsAsync(userFilter, cancellationToken: ct);
@@ -65,12 +110,34 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
             : [];
         var gameMap = gameList.ToDictionary(g => g.Id);
 
+        var userSettingsFilter = Builders<UserSettings>.Filter.In(s => s.UserId, userIds);
+        var userSettingsList = await settingsCol.Find(userSettingsFilter).ToListAsync(ct);
+        var settingsMap = userSettingsList.ToDictionary(s => s.UserId);
+
+        var friendshipMap = new Dictionary<string, Friendship>();
+        if (_currentUser.IsAuthenticated && _currentUser.UserId is not null)
+        {
+            var myId = _currentUser.UserId;
+            var friendshipsCol = _mongoContext.GetCollection<Friendship>(CollectionNames.Friendships);
+            var friendshipList = await friendshipsCol.Find(f =>
+                (f.RequesterId == myId && userIds.Contains(f.AddresseeId)) ||
+                (f.AddresseeId == myId && userIds.Contains(f.RequesterId))
+            ).ToListAsync(ct);
+
+            foreach (var f in friendshipList)
+            {
+                var otherId = f.RequesterId == myId ? f.AddresseeId : f.RequesterId;
+                friendshipMap[otherId] = f;
+            }
+        }
+
         var items = new List<DiscoverPlayerResponse>();
 
         foreach (var user in userList)
         {
             profileMap.TryGetValue(user.Id, out var profile);
             gpMap.TryGetValue(user.Id, out var userGameProfiles);
+            settingsMap.TryGetValue(user.Id, out var userSettings);
 
             var topGameProfile = userGameProfiles?
                 .OrderByDescending(gp => gp.LookingForTeam)
@@ -91,7 +158,9 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
                 };
             }).ToList();
 
-            var isLft = userGameProfiles?.Any(gp => gp.LookingForTeam) ?? false;
+            var gpLft = userGameProfiles?.Any(gp => gp.LookingForTeam) ?? false;
+            var defaultLft = userSettings?.DefaultLookingForTeam ?? false;
+            var isLft = gpLft || defaultLft;
 
             if (!string.IsNullOrWhiteSpace(request.GameId))
             {
@@ -111,6 +180,14 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
                 if (topGameProfile is null) continue;
             }
 
+            friendshipMap.TryGetValue(user.Id, out var friendship);
+            string? friendshipStatus = friendship?.Status switch
+            {
+                Domain.Enums.FriendshipStatus.Pending => "Pending",
+                Domain.Enums.FriendshipStatus.Accepted => "Accepted",
+                _ => null
+            };
+
             items.Add(new DiscoverPlayerResponse
             {
                 Id = user.Id,
@@ -122,7 +199,9 @@ public class DiscoverPlayersQueryHandler : IRequestHandler<DiscoverPlayersQuery,
                 LookingForTeam = isLft,
                 Region = topGameProfile?.Region.ToString(),
                 ExperienceLevel = topGameProfile?.ExperienceLevel.ToString(),
-                CommunicationPreference = topGameProfile?.CommunicationPreference.ToString()
+                CommunicationPreference = topGameProfile?.CommunicationPreference.ToString(),
+                IsBlockedByMe = blockedByMeIds.Contains(user.Id),
+                FriendshipStatus = friendshipStatus
             });
         }
 

@@ -43,3 +43,26 @@ export async function updateGameProfile(
 export async function deleteGameProfile(id: string): Promise<void> {
   await api.delete(`/api/profiles/me/games/${id}`);
 }
+
+export async function uploadAvatar(file: File): Promise<ProfileDetailResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<ProfileDetailResponse>('/api/profiles/me/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function uploadBanner(file: File): Promise<ProfileDetailResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await api.post<ProfileDetailResponse>('/api/profiles/me/banner', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function removeBanner(): Promise<ProfileDetailResponse> {
+  const { data } = await api.delete<ProfileDetailResponse>('/api/profiles/me/banner');
+  return data;
+}

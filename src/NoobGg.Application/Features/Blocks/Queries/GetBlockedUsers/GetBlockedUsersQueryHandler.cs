@@ -43,12 +43,19 @@ public class GetBlockedUsersQueryHandler
             .Find(Builders<User>.Filter.In(u => u.Id, blockedIds))
             .ToListAsync(ct);
 
+        var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var blockedProfiles = await profiles
+            .Find(p => blockedIds.Contains(p.UserId))
+            .ToListAsync(ct);
+        var avatarMap = blockedProfiles.ToDictionary(p => p.UserId, p => p.AvatarUrl);
+
         var userMap = blockedUsers.ToDictionary(u => u.Id);
 
         var result = myBlocks.Select(b => new BlockedUserResponse(
             b.Id,
             b.BlockedUserId,
             userMap.TryGetValue(b.BlockedUserId, out var u) ? u.Username : "Deleted User",
+            avatarMap.GetValueOrDefault(b.BlockedUserId),
             b.CreatedAt
         )).ToList();
 

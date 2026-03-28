@@ -3,6 +3,7 @@ export interface UserResponse {
   email: string;
   username: string;
   role: string;
+  avatarUrl: string | null;
   isEmailVerified: boolean;
   isProfileComplete: boolean;
   createdAt: string;
@@ -13,6 +14,7 @@ export interface AuthResponse {
   refreshToken: string;
   expiresAt: string;
   user: UserResponse;
+  isDeactivated: boolean;
 }
 
 export interface LoginRequest {

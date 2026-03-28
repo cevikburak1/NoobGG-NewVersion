@@ -6,6 +6,7 @@ public record ProfileDetailResponse
     public string Username { get; init; } = string.Empty;
     public string? DisplayName { get; init; }
     public string? AvatarUrl { get; init; }
+    public string? BannerUrl { get; init; }
     public string? Bio { get; init; }
     public string? Country { get; init; }
     public string? Timezone { get; init; }
@@ -24,6 +25,11 @@ public record ProfileDetailResponse
     public bool IsOnline { get; init; }
     public bool IsBlocked { get; init; }
     public bool IsBlockedByThem { get; init; }
+    public bool IsRestricted { get; init; }
+    public string? RestrictedReason { get; init; }
+    public string? FriendshipStatus { get; init; }
+    public string? FriendshipId { get; init; }
+    public bool IsFriendRequestSentByMe { get; init; }
 }
 
 public record ProfileStats

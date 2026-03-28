@@ -12,6 +12,8 @@ public record DiscoverPlayerResponse
     public string? Region { get; init; }
     public string? ExperienceLevel { get; init; }
     public string? CommunicationPreference { get; init; }
+    public bool IsBlockedByMe { get; init; }
+    public string? FriendshipStatus { get; init; }
 }
 
 public record PlayerGameInfo

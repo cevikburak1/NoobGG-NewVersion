@@ -6,4 +6,5 @@ public record AuthResponse
     public string RefreshToken { get; init; } = string.Empty;
     public DateTime ExpiresAt { get; init; }
     public UserResponse User { get; init; } = null!;
+    public bool IsDeactivated { get; init; }
 }

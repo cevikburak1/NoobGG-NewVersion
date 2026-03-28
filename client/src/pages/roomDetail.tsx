@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRoomDetail, useJoinRoom, useLeaveRoom, useCloseRoom } from '@/features/rooms/hooks';
 import { useChatConnection, useChatHistory } from '@/features/chat/hooks';
+import { useBlockedUsers } from '@/features/blocks/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Badge, Card, AnimatedPage, Spinner, Modal } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
@@ -35,11 +36,17 @@ export default function RoomDetailPage() {
   const chat = useChatConnection(chatRoomId);
   const isOwner = room?.creatorId === user?.id;
 
+  const { data: blockedUsers } = useBlockedUsers();
+  const blockedIds = useMemo(
+    () => new Set(blockedUsers?.map((b) => b.blockedUserId) ?? []),
+    [blockedUsers],
+  );
+
   const historyMessages = history?.items ?? [];
   const allMessages = [
     ...historyMessages,
     ...chat.messages.filter((m) => !historyMessages.some((h) => h.id === m.id)),
-  ];
+  ].filter((m) => !blockedIds.has(m.senderId));
 
   if (isLoading) {
     return (
@@ -93,12 +100,12 @@ export default function RoomDetailPage() {
         <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}>
           <Link
             to="/rooms"
-            className="inline-flex items-center gap-1 text-sm text-foreground-muted hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-foreground-muted transition-colors hover:bg-surface-hover hover:text-foreground"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
-            Back to Rooms
+            Rooms
           </Link>
         </motion.div>
 
@@ -131,25 +138,20 @@ export default function RoomDetailPage() {
                 isLoadingMore={historyLoading}
               />
             ) : (
-              <Card className="py-12 text-center">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', bounce: 0.5 }}
-                  className="text-4xl"
-                >
-                  💬
-                </motion.div>
-                <p className="mt-3 text-lg font-semibold text-foreground">Join to chat</p>
-                <p className="mt-1 text-sm text-foreground-muted">
+              <Card className="flex flex-col items-center py-14 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-hover/80">
+                  <span className="text-2xl">💬</span>
+                </div>
+                <p className="mt-4 text-lg font-semibold text-foreground">Join to chat</p>
+                <p className="mt-1.5 text-sm text-foreground-muted">
                   You need to be a member to access the chat
                 </p>
                 {room.status === 'Open' && (
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }} className="mt-4">
+                  <div className="mt-5">
                     <Button onClick={handleJoin} isLoading={joinRoom.isPending}>
                       Join Room
                     </Button>
-                  </motion.div>
+                  </div>
                 )}
               </Card>
             )}
@@ -160,6 +162,7 @@ export default function RoomDetailPage() {
             room={room}
             onlineUsers={chat.onlineUsers}
             isMember={isMember}
+            blockedIds={blockedIds}
           />
         </div>
 
@@ -275,10 +278,12 @@ function RoomSidebar({
   room,
   onlineUsers,
   isMember,
+  blockedIds,
 }: {
   room: { members: { userId: string; username: string; role: string; joinedAt: string }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null };
   onlineUsers: { userId: string; username: string }[];
   isMember: boolean | undefined;
+  blockedIds: Set<string>;
 }) {
   const onlineIds = new Set(onlineUsers.map((u) => u.userId));
 
@@ -289,12 +294,11 @@ function RoomSidebar({
       transition={{ delay: 0.15 }}
       className="space-y-4"
     >
-      {/* Online */}
       {isMember && onlineUsers.length > 0 && (
         <Card>
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-            <span className="h-2 w-2 rounded-full bg-success" />
-            Online ({onlineUsers.length})
+          <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+            <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
+            Online &middot; {onlineUsers.length}
           </h3>
           <div className="space-y-2">
             <AnimatePresence>
@@ -307,7 +311,7 @@ function RoomSidebar({
                   className="flex items-center gap-2"
                 >
                   <div className="relative">
-                    <UserAvatar username={u.username} size="sm" />
+                    <UserAvatar username={u.username} avatarUrl={u.avatarUrl} size="sm" />
                     <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface bg-success" />
                   </div>
                   <Link
@@ -325,8 +329,8 @@ function RoomSidebar({
 
       {/* All members */}
       <Card>
-        <h3 className="mb-3 text-sm font-semibold text-foreground">
-          Members ({room.members.length})
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">
+          Members &middot; {room.members.length}
         </h3>
         <div className="space-y-2">
           {room.members.map((member, i) => (
@@ -338,10 +342,10 @@ function RoomSidebar({
               className="flex items-center gap-3"
             >
               <div className="relative">
-                <UserAvatar username={member.username} size="sm" />
+                <UserAvatar username={member.username} avatarUrl={member.avatarUrl} size="sm" />
                 {isMember && (
                   <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
-                    onlineIds.has(member.userId) ? 'bg-success' : 'bg-danger'
+                    blockedIds.has(member.userId) ? 'bg-foreground-subtle' : onlineIds.has(member.userId) ? 'bg-success' : 'bg-danger'
                   }`} />
                 )}
               </div>
@@ -356,9 +360,11 @@ function RoomSidebar({
                   Joined {new Date(member.joinedAt).toLocaleDateString()}
                 </span>
               </div>
-              {member.role === 'Owner' && (
+              {blockedIds.has(member.userId) ? (
+                <Badge variant="danger" className="shrink-0">Blocked</Badge>
+              ) : member.role === 'Owner' ? (
                 <Badge variant="warning" className="shrink-0">Owner</Badge>
-              )}
+              ) : null}
             </motion.div>
           ))}
         </div>
@@ -366,7 +372,7 @@ function RoomSidebar({
 
       {/* Room info */}
       <Card>
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Room Info</h3>
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-foreground-muted">Room Info</h3>
         <div className="space-y-2 text-sm">
           <InfoRow label="Created" value={new Date(room.createdAt).toLocaleDateString()} />
           <InfoRow label="Visibility" value={room.isPublic ? 'Public' : 'Private'} />

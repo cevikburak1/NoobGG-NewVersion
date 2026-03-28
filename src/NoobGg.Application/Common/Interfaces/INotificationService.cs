@@ -11,4 +11,8 @@ public interface INotificationService
         string body,
         Dictionary<string, string>? data = null,
         CancellationToken ct = default);
+
+    Task SendBlockListChangedAsync(string userId1, string userId2, bool isBlocked, CancellationToken ct = default);
+
+    Task SendFriendListChangedAsync(string userId1, string userId2, CancellationToken ct = default);
 }

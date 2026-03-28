@@ -12,11 +12,19 @@ public class BlockUserCommandHandler : IRequestHandler<BlockUserCommand, Result>
 {
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
+    private readonly IRoomNotificationService _roomNotification;
+    private readonly INotificationService _notificationService;
 
-    public BlockUserCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser)
+    public BlockUserCommandHandler(
+        IMongoContext mongoContext,
+        ICurrentUser currentUser,
+        IRoomNotificationService roomNotification,
+        INotificationService notificationService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
+        _roomNotification = roomNotification;
+        _notificationService = notificationService;
     }
 
     public async Task<Result> Handle(BlockUserCommand request, CancellationToken ct)
@@ -50,6 +58,37 @@ public class BlockUserCommandHandler : IRequestHandler<BlockUserCommand, Result>
         {
             return Result.Fail("User is already blocked");
         }
+
+        var rooms = _mongoContext.GetCollection<Room>(CollectionNames.Rooms);
+        var roomMembers = _mongoContext.GetCollection<RoomMember>(CollectionNames.RoomMembers);
+
+        var myRooms = await rooms.Find(r =>
+            r.CreatorId == userId && r.Status != RoomStatus.Closed
+        ).ToListAsync(ct);
+
+        foreach (var room in myRooms)
+        {
+            var memberFilter = Builders<RoomMember>.Filter.And(
+                Builders<RoomMember>.Filter.Eq(m => m.RoomId, room.Id),
+                Builders<RoomMember>.Filter.Eq(m => m.UserId, request.BlockedUserId));
+
+            var deleted = await roomMembers.DeleteOneAsync(memberFilter, ct);
+            if (deleted.DeletedCount > 0)
+            {
+                await rooms.UpdateOneAsync(
+                    Builders<Room>.Filter.Eq(r => r.Id, room.Id),
+                    Builders<Room>.Update
+                        .Inc(r => r.CurrentMemberCount, -1)
+                        .Set(r => r.UpdatedAt, DateTime.UtcNow),
+                    cancellationToken: ct);
+
+                await _roomNotification.NotifyMemberLeftAsync(room.Id, request.BlockedUserId, "blocked user", ct);
+            }
+        }
+
+        await _roomNotification.NotifyRoomListChangedAsync(ct);
+
+        await _notificationService.SendBlockListChangedAsync(userId, request.BlockedUserId, true, ct);
 
         var audits = _mongoContext.GetCollection<Audit>(CollectionNames.Audits);
         await audits.InsertOneAsync(new Audit

@@ -18,6 +18,8 @@ export interface DiscoverPlayerResponse {
   region: string | null;
   experienceLevel: string | null;
   communicationPreference: string | null;
+  isBlockedByMe: boolean;
+  friendshipStatus: string | null;
 }
 
 export interface PlayerDiscoverParams {

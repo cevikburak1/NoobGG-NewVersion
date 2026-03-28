@@ -33,3 +33,7 @@ export type NotificationType =
 export type ExperienceLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 
 export type CommunicationPreference = 'Text' | 'Voice' | 'Both' | 'None';
+
+export type ProfileVisibility = 'Public' | 'FriendsOnly' | 'Private';
+
+export type DmPermission = 'Everyone' | 'FriendsOnly' | 'Nobody';

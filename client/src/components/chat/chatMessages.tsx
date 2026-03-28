@@ -188,7 +188,7 @@ function MessageGroup({
     <div className={`mb-3 flex gap-2.5 ${isOwn ? 'flex-row-reverse' : ''}`}>
       {!isOwn && (
         <div className="mt-0.5 shrink-0">
-          <UserAvatar username={first.senderUsername} size="sm" className="!h-7 !w-7 !text-[10px]" />
+          <UserAvatar username={first.senderUsername} avatarUrl={first.senderAvatarUrl} size="sm" className="!h-7 !w-7 !text-[10px]" />
         </div>
       )}
       <div className={`min-w-0 max-w-[75%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>

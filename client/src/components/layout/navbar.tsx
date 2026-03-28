@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { useNotificationContext } from '@/providers/notificationProvider';
+import { useConversations } from '@/features/dm/hooks';
 
 export function Navbar() {
   const user = useAuthStore((s) => s.user);
@@ -12,6 +13,8 @@ export function Navbar() {
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
   const { unreadCount } = useNotificationContext();
+  const { data: conversations } = useConversations();
+  const totalDmUnread = conversations?.reduce((sum, c) => sum + c.unreadCount, 0) ?? 0;
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +45,7 @@ export function Navbar() {
         <nav className="hidden items-center gap-6 md:flex">
           <NavLink to="/rooms">Rooms</NavLink>
           <NavLink to="/discover">Discover</NavLink>
+          <NavLink to="/friends">Friends</NavLink>
           <NavLink to="/subscriptions">Plans</NavLink>
         </nav>
 
@@ -61,7 +65,7 @@ export function Navbar() {
                   onClick={() => setDropdownOpen((p) => !p)}
                   className="flex items-center gap-2 rounded-full bg-surface-hover px-2 py-1.5 text-sm font-medium text-foreground hover:bg-surface-active transition-colors"
                 >
-                  <UserAvatar username={user?.username ?? ''} size="xs" />
+                  <UserAvatar username={user?.username ?? ''} avatarUrl={user?.avatarUrl} size="xs" />
                   <span className="hidden sm:inline">{user?.username}</span>
                   <ChevronDownIcon />
                 </button>
@@ -97,6 +101,13 @@ export function Navbar() {
                           onClick={() => { setDropdownOpen(false); navigate('/profile/games'); }}
                         >
                           Game Profiles
+                        </DropdownItem>
+                        <DropdownItem
+                          icon={<MessagesDropdownIcon />}
+                          onClick={() => { setDropdownOpen(false); navigate('/messages'); }}
+                          badge={totalDmUnread}
+                        >
+                          Messages
                         </DropdownItem>
                         <DropdownItem
                           icon={<SettingsSmIcon />}
@@ -136,11 +147,13 @@ function DropdownItem({
   icon,
   onClick,
   danger,
+  badge,
 }: {
   children: React.ReactNode;
   icon: React.ReactNode;
   onClick: () => void;
   danger?: boolean;
+  badge?: number;
 }) {
   return (
     <button
@@ -152,7 +165,12 @@ function DropdownItem({
       }`}
     >
       {icon}
-      {children}
+      <span className="flex-1 text-left">{children}</span>
+      {badge != null && badge > 0 && (
+        <span className="flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </button>
   );
 }
@@ -201,6 +219,14 @@ function GamepadIcon() {
   return (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 01-.657.643 48.49 48.49 0 01-4.163-.3c.186 1.613.293 3.25.315 4.907a.656.656 0 01-.658.663v0c-.355 0-.676-.186-.959-.401a1.647 1.647 0 00-1.003-.349c-1.036 0-1.875 1.007-1.875 2.25s.84 2.25 1.875 2.25c.369 0 .713-.128 1.003-.349.283-.215.604-.401.959-.401v0c.31 0 .555.26.532.57a48.039 48.039 0 01-.642 5.056c1.518.19 3.058.309 4.616.354a.64.64 0 00.657-.643v0c0-.355-.186-.676-.401-.959a1.647 1.647 0 01-.349-1.003c0-1.035 1.008-1.875 2.25-1.875 1.243 0 2.25.84 2.25 1.875 0 .369-.128.713-.349 1.003-.215.283-.4.604-.4.959v0c0 .333.277.599.61.58a48.1 48.1 0 005.427-.63 48.05 48.05 0 00.582-4.717.532.532 0 00-.533-.57v0c-.355 0-.676.186-.959.401-.29.221-.634.349-1.003.349-1.035 0-1.875-1.007-1.875-2.25s.84-2.25 1.875-2.25c.37 0 .713.128 1.003.349.283.215.604.401.96.401v0a.656.656 0 00.658-.663 48.422 48.422 0 00-.37-5.36c-1.886.342-3.81.574-5.766.689a.578.578 0 01-.61-.58v0z" />
+    </svg>
+  );
+}
+
+function MessagesDropdownIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-2.41-.5v.03a.75.75 0 01-.75.75h-.03A8.256 8.256 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
     </svg>
   );
 }

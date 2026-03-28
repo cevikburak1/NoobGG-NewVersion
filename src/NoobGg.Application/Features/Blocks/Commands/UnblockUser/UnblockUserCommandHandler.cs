@@ -12,11 +12,13 @@ public class UnblockUserCommandHandler : IRequestHandler<UnblockUserCommand, Res
 {
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
+    private readonly INotificationService _notificationService;
 
-    public UnblockUserCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser)
+    public UnblockUserCommandHandler(IMongoContext mongoContext, ICurrentUser currentUser, INotificationService notificationService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
+        _notificationService = notificationService;
     }
 
     public async Task<Result> Handle(UnblockUserCommand request, CancellationToken ct)
@@ -32,6 +34,8 @@ public class UnblockUserCommandHandler : IRequestHandler<UnblockUserCommand, Res
 
         if (result.DeletedCount == 0)
             return Result.Fail("Block not found", 404);
+
+        await _notificationService.SendBlockListChangedAsync(userId, request.BlockedUserId, false, ct);
 
         var audits = _mongoContext.GetCollection<Audit>(CollectionNames.Audits);
         await audits.InsertOneAsync(new Audit

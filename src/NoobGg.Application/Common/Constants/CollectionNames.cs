@@ -22,4 +22,5 @@ public static class CollectionNames
     public const string EmailVerificationTokens = "emailVerificationTokens";
     public const string Conversations = "conversations";
     public const string DirectMessages = "directMessages";
+    public const string UserSettings = "userSettings";
 }

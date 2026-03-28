@@ -22,6 +22,7 @@ import ModerationPage from '@/pages/moderation';
 import VerifyEmailPage from '@/pages/verifyEmail';
 import OnboardingPage from '@/pages/onboarding';
 import MessagesPage from '@/pages/messages';
+import FriendsPage from '@/pages/friends';
 
 const routes: RouteObject[] = [
   {
@@ -127,6 +128,16 @@ const routes: RouteObject[] = [
           <ProtectedRoute>
             <RequireProfile>
               <MessagesPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/friends',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <FriendsPage />
             </RequireProfile>
           </ProtectedRoute>
         ),

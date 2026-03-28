@@ -8,6 +8,7 @@ public record ChatMessageResponse
     public string RoomId { get; init; } = string.Empty;
     public string SenderId { get; init; } = string.Empty;
     public string SenderUsername { get; init; } = string.Empty;
+    public string? SenderAvatarUrl { get; init; }
     public string Content { get; init; } = string.Empty;
     public MessageType Type { get; init; }
     public bool IsEdited { get; init; }

@@ -80,9 +80,13 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
         var users = _mongoContext.GetCollection<User>(CollectionNames.Users);
         var user = await users.Find(u => u.Id == userId).FirstOrDefaultAsync(ct);
 
+        var profilesCol = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var ownerProfile = await profilesCol.Find(p => p.UserId == userId).FirstOrDefaultAsync(ct);
+
         var memberResponse = new RoomMemberResponse(
             userId,
             user?.Username ?? "Unknown",
+            ownerProfile?.AvatarUrl,
             ownerMember.Role.ToString(),
             ownerMember.JoinedAt);
 

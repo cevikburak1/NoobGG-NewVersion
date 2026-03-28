@@ -78,6 +78,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       qc.setQueryData(queryKeys.notifications.unreadCount(), count);
     });
 
+    conn.on('BlockListChanged', () => {
+      qc.invalidateQueries({ queryKey: queryKeys.blocks.list() });
+      qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
+      qc.invalidateQueries({ queryKey: ['users'] });
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+      qc.invalidateQueries({ queryKey: queryKeys.friends.list() });
+      qc.invalidateQueries({ queryKey: queryKeys.friends.requests() });
+    });
+
+    conn.on('FriendListChanged', () => {
+      qc.invalidateQueries({ queryKey: queryKeys.friends.list() });
+      qc.invalidateQueries({ queryKey: queryKeys.friends.requests() });
+      qc.invalidateQueries({ queryKey: ['profile'] });
+      qc.invalidateQueries({ queryKey: ['users'] });
+    });
+
+    conn.on('ForceDisconnect', (reason: string) => {
+      addToast({ title: 'Disconnected', message: reason, type: 'warning' });
+      useAuthStore.getState().logout();
+    });
+
     conn.onreconnecting(() => {});
     conn.onreconnected(() => {});
     conn.onclose(() => {});

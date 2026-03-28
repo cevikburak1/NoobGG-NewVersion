@@ -35,6 +35,19 @@ public class JoinRoomCommandHandler : IRequestHandler<JoinRoomCommand, Result>
         var userId = _currentUser.UserId;
         var rooms = _mongoContext.GetCollection<Room>(CollectionNames.Rooms);
         var roomMembers = _mongoContext.GetCollection<RoomMember>(CollectionNames.RoomMembers);
+        var blocksCol = _mongoContext.GetCollection<Block>(CollectionNames.Blocks);
+
+        var room = await rooms.Find(r => r.Id == request.RoomId).FirstOrDefaultAsync(ct);
+        if (room is null)
+            return Result.Fail("Room not found", 404);
+
+        var hasBlock = await blocksCol.Find(b =>
+            (b.BlockerId == room.CreatorId && b.BlockedUserId == userId) ||
+            (b.BlockerId == userId && b.BlockedUserId == room.CreatorId)
+        ).AnyAsync(ct);
+
+        if (hasBlock)
+            return Result.Fail("Cannot join this room");
 
         // Atomic increment: only succeeds if room is open and has space
         var filter = Builders<Room>.Filter.And(

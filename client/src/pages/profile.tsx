@@ -2,6 +2,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/features/profile/hooks';
 import { useBlockUser, useUnblockUser } from '@/features/blocks/hooks';
+import { useSendFriendRequest, useAcceptFriendRequest, useRemoveFriend } from '@/features/friends/hooks';
 import {
   Button,
   Badge,
@@ -13,12 +14,18 @@ import {
   staggerItem,
 } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
+import { resolveFileUrl } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
 
 export default function ProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
+  const sendFriendRequest = useSendFriendRequest();
+  const acceptFriendRequest = useAcceptFriendRequest();
+  const removeFriend = useRemoveFriend();
+  const { addToast } = useToast();
 
   const { data: profile, isLoading, refetch } = useProfile(userId);
 
@@ -47,6 +54,34 @@ export default function ProfilePage() {
     );
   }
 
+  if (profile.isRestricted) {
+    return (
+      <AnimatedPage>
+        <div className="flex flex-col items-center py-32 text-center">
+          <div className="text-5xl">{profile.isBlockedByThem ? '🚫' : '🔒'}</div>
+          <h2 className="mt-4 text-xl font-bold text-foreground">{profile.username}</h2>
+          <p className="mt-2 text-foreground-muted">
+            {profile.restrictedReason}
+          </p>
+          {profile.isBlocked && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={handleUnblock}
+              isLoading={unblockUser.isPending}
+            >
+              Unblock
+            </Button>
+          )}
+          <Link to="/discover" className="mt-4">
+            <Button variant="outline">Discover Players</Button>
+          </Link>
+        </div>
+      </AnimatedPage>
+    );
+  }
+
   const handleBlock = async () => {
     if (!userId) return;
     await blockUser.mutateAsync(userId);
@@ -63,6 +98,39 @@ export default function ProfilePage() {
     navigate(`/messages?user=${userId}`);
   };
 
+  const handleSendFriendRequest = async () => {
+    if (!userId) return;
+    try {
+      await sendFriendRequest.mutateAsync(userId);
+      addToast({ title: 'Friend request sent', type: 'success' });
+      refetch();
+    } catch {
+      addToast({ title: 'Could not send friend request', type: 'error' });
+    }
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    if (!profile?.friendshipId) return;
+    try {
+      await acceptFriendRequest.mutateAsync(profile.friendshipId);
+      addToast({ title: 'Friend request accepted', type: 'success' });
+      refetch();
+    } catch {
+      addToast({ title: 'Could not accept friend request', type: 'error' });
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!userId) return;
+    try {
+      await removeFriend.mutateAsync(userId);
+      addToast({ title: 'Friend removed', type: 'info' });
+      refetch();
+    } catch {
+      addToast({ title: 'Could not remove friend', type: 'error' });
+    }
+  };
+
   return (
     <AnimatedPage>
       <div className="space-y-6">
@@ -71,9 +139,19 @@ export default function ProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="relative overflow-hidden rounded-2xl border border-border bg-surface"
         >
-          <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 sm:h-40">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_var(--color-primary)_0%,_transparent_60%)] opacity-20" />
-          </div>
+          {profile.bannerUrl ? (
+            <div className="h-32 sm:h-40">
+              <img
+                src={resolveFileUrl(profile.bannerUrl)}
+                alt={`${profile.username}'s banner`}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 sm:h-40">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_var(--color-primary)_0%,_transparent_60%)] opacity-20" />
+            </div>
+          )}
 
           <div className="relative px-6 pb-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
@@ -152,6 +230,16 @@ export default function ProfilePage() {
                   </>
                 ) : (
                   <>
+                    {!profile.isBlockedByThem && !profile.isBlocked && (
+                      <FriendActionButton
+                        friendshipStatus={profile.friendshipStatus}
+                        isFriendRequestSentByMe={profile.isFriendRequestSentByMe}
+                        onSendRequest={handleSendFriendRequest}
+                        onAcceptRequest={handleAcceptFriendRequest}
+                        onRemoveFriend={handleRemoveFriend}
+                        isPending={sendFriendRequest.isPending || acceptFriendRequest.isPending || removeFriend.isPending}
+                      />
+                    )}
                     {!profile.isBlockedByThem && (
                       <Button onClick={handleSendMessage} className="gap-2">
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -349,5 +437,74 @@ export default function ProfilePage() {
         </motion.div>
       </div>
     </AnimatedPage>
+  );
+}
+
+function FriendActionButton({
+  friendshipStatus,
+  isFriendRequestSentByMe,
+  onSendRequest,
+  onAcceptRequest,
+  onRemoveFriend,
+  isPending,
+}: {
+  friendshipStatus: string | null;
+  isFriendRequestSentByMe: boolean;
+  onSendRequest: () => void;
+  onAcceptRequest: () => void;
+  onRemoveFriend: () => void;
+  isPending: boolean;
+}) {
+  if (friendshipStatus === 'Accepted') {
+    return (
+      <div className="flex gap-1.5">
+        <Button variant="outline" size="sm" className="gap-1.5 border-green-500/30 text-green-600" disabled>
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          Friends
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRemoveFriend}
+          isLoading={isPending}
+          className="text-foreground-muted hover:text-danger"
+        >
+          Remove
+        </Button>
+      </div>
+    );
+  }
+
+  if (friendshipStatus === 'Pending') {
+    if (!isFriendRequestSentByMe) {
+      return (
+        <Button size="sm" onClick={onAcceptRequest} isLoading={isPending} className="gap-1.5">
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          </svg>
+          Accept Request
+        </Button>
+      );
+    }
+
+    return (
+      <Button variant="outline" size="sm" disabled className="gap-1.5">
+        <svg className="h-3.5 w-3.5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Request Sent
+      </Button>
+    );
+  }
+
+  return (
+    <Button variant="outline" size="sm" onClick={onSendRequest} isLoading={isPending} className="gap-1.5">
+      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+      </svg>
+      Add Friend
+    </Button>
   );
 }

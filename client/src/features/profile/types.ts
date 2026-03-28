@@ -3,6 +3,7 @@ export interface ProfileDetailResponse {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  bannerUrl: string | null;
   bio: string | null;
   country: string | null;
   timezone: string | null;
@@ -19,6 +20,11 @@ export interface ProfileDetailResponse {
   isOnline: boolean;
   isBlocked: boolean;
   isBlockedByThem: boolean;
+  isRestricted: boolean;
+  restrictedReason: string | null;
+  friendshipStatus: string | null;
+  friendshipId: string | null;
+  isFriendRequestSentByMe: boolean;
 }
 
 export interface ProfileStats {

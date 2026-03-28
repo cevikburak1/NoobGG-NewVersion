@@ -34,6 +34,15 @@ public class NotificationService : INotificationService
         Dictionary<string, string>? data = null,
         CancellationToken ct = default)
     {
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        var settings = await settingsCol.Find(s => s.UserId == userId).FirstOrDefaultAsync(ct);
+
+        if (settings is not null && !ShouldNotify(settings, type))
+        {
+            _logger.LogDebug("Notification suppressed for user {UserId}: {Type} (preference off)", userId, type);
+            return;
+        }
+
         var notification = new Notification
         {
             UserId = userId,
@@ -71,5 +80,36 @@ public class NotificationService : INotificationService
         await _hubContext.Clients.Group(groupName).UnreadCountChanged((int)unreadCount);
 
         _logger.LogDebug("Notification created for user {UserId}: {Type}", userId, type);
+    }
+
+    private static bool ShouldNotify(UserSettings settings, NotificationType type) => type switch
+    {
+        NotificationType.DirectMessage => settings.NotifyDirectMessages,
+        NotificationType.FriendRequest or NotificationType.FriendAccepted => settings.NotifyFriendRequests,
+        NotificationType.RoomJoined or NotificationType.RoomLeft or NotificationType.RoomClosed or NotificationType.RoomInvite => settings.NotifyRoomActivity,
+        NotificationType.ReportResolved or NotificationType.SubscriptionChanged or NotificationType.SystemMessage => settings.NotifySystemMessages,
+        _ => true
+    };
+
+    public async Task SendBlockListChangedAsync(string userId1, string userId2, bool isBlocked, CancellationToken ct = default)
+    {
+        var group1 = $"notifications:{userId1}";
+        var group2 = $"notifications:{userId2}";
+
+        await Task.WhenAll(
+            _hubContext.Clients.Group(group1).BlockListChanged(userId2, isBlocked),
+            _hubContext.Clients.Group(group2).BlockListChanged(userId1, isBlocked)
+        );
+    }
+
+    public async Task SendFriendListChangedAsync(string userId1, string userId2, CancellationToken ct = default)
+    {
+        var group1 = $"notifications:{userId1}";
+        var group2 = $"notifications:{userId2}";
+
+        await Task.WhenAll(
+            _hubContext.Clients.Group(group1).FriendListChanged(),
+            _hubContext.Clients.Group(group2).FriendListChanged()
+        );
     }
 }

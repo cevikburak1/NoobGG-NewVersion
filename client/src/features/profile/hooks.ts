@@ -6,8 +6,11 @@ import {
   getGameProfiles,
   getMyProfile,
   getProfile,
+  removeBanner,
   updateGameProfile,
   updateProfile,
+  uploadAvatar,
+  uploadBanner,
 } from './api';
 import type {
   AddGameProfileRequest,
@@ -75,6 +78,36 @@ export function useDeleteGameProfile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteGameProfile(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadAvatar(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+export function useUploadBanner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => uploadBanner(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile'] });
+    },
+  });
+}
+
+export function useRemoveBanner() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => removeBanner(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['profile'] });
     },

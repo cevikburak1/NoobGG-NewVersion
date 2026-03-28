@@ -46,10 +46,17 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
         if (user.IsBanned)
             return Result<AuthResponse>.Fail($"Account is banned: {user.BanReason ?? "No reason provided"}", 403);
 
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        var userSettings = await settingsCol.Find(s => s.UserId == user.Id).FirstOrDefaultAsync(ct);
+        var isDeactivated = userSettings?.IsDeactivated ?? false;
+
         var updateDef = Builders<User>.Update
             .Set(u => u.LastLoginAt, DateTime.UtcNow)
             .Set(u => u.UpdatedAt, DateTime.UtcNow);
         await users.UpdateOneAsync(Builders<User>.Filter.Eq(u => u.Id, user.Id), updateDef, cancellationToken: ct);
+
+        var profilesCol = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var profile = await profilesCol.Find(p => p.UserId == user.Id).FirstOrDefaultAsync(ct);
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.Username, user.Role.ToString());
         var refreshTokenString = _jwtTokenService.GenerateRefreshToken();
@@ -69,16 +76,18 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
             AccessToken = accessToken,
             RefreshToken = refreshTokenString,
             ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtTokenService.AccessTokenExpirationMinutes),
-            User = MapToUserResponse(user)
+            User = MapToUserResponse(user, profile?.AvatarUrl),
+            IsDeactivated = isDeactivated
         });
     }
 
-    private static UserResponse MapToUserResponse(User user) => new()
+    private static UserResponse MapToUserResponse(User user, string? avatarUrl) => new()
     {
         Id = user.Id,
         Email = user.Email,
         Username = user.Username,
         Role = user.Role.ToString(),
+        AvatarUrl = avatarUrl,
         IsEmailVerified = user.IsEmailVerified,
         IsProfileComplete = user.IsProfileComplete,
         CreatedAt = user.CreatedAt

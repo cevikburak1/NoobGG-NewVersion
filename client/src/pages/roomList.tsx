@@ -67,21 +67,24 @@ export default function RoomListPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-            <h1 className="text-3xl font-bold text-foreground">Rooms</h1>
-            <p className="mt-1 text-foreground-muted">Browse and join rooms to find teammates</p>
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-3xl font-bold text-foreground">Rooms</h1>
+              {data && (
+                <span className="text-sm text-foreground-subtle">{data.totalCount} total</span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-foreground-muted">Browse and join rooms to find teammates</p>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={() => isAuth ? setShowCreateModal(true) : navigate('/login')}
-                className="gap-2"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                Create Room
-              </Button>
-            </motion.div>
+            <Button
+              onClick={() => isAuth ? setShowCreateModal(true) : navigate('/login')}
+              className="gap-2"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Create Room
+            </Button>
           </motion.div>
         </div>
 
@@ -89,9 +92,8 @@ export default function RoomListPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-wrap items-end gap-3"
+          className="flex flex-wrap items-end gap-3 rounded-xl border border-border/60 bg-surface/80 p-4"
         >
-          {/* Game Filter */}
           <div className="relative w-full sm:w-56">
             {filters.gameId ? (
               <div className="flex h-[38px] items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3">
@@ -266,39 +268,52 @@ export default function RoomListPage() {
 
 function RoomCard({ room }: { room: RoomResponse }) {
   const capacityPercent = (room.currentMemberCount / room.maxMembers) * 100;
+  const isFull = capacityPercent >= 100;
 
   return (
     <motion.div variants={staggerItem}>
       <Link to={`/rooms/${room.id}`}>
         <motion.div
-          whileHover={{ y: -4, scale: 1.01 }}
+          whileHover={{ y: -3 }}
+          transition={{ duration: 0.2 }}
           className="group relative overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary/30"
         >
           {room.gameImageUrl ? (
-            <div className="relative h-32 overflow-hidden">
+            <div className="relative h-28 overflow-hidden">
               <img
                 src={room.gameImageUrl}
                 alt={room.gameName ?? 'Game'}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-linear-to-t from-surface via-surface/60 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-surface via-surface/50 to-transparent" />
               {room.gameName && (
-                <span className="absolute bottom-2 left-3 text-xs font-medium text-white/80 bg-black/40 px-2 py-0.5 rounded">
+                <span className="absolute bottom-2.5 left-3 rounded-md bg-black/50 px-2 py-0.5 text-xs font-medium text-white/90 backdrop-blur-sm">
                   {room.gameName}
                 </span>
               )}
+              <Badge
+                variant={statusColors[room.status] ?? 'default'}
+                className="absolute right-2.5 top-2.5 shadow-sm"
+              >
+                {room.status}
+              </Badge>
             </div>
           ) : (
-            <div className="h-16 bg-linear-to-br from-primary/20 to-accent/10 flex items-center justify-center">
+            <div className="relative flex h-20 items-center justify-center bg-linear-to-br from-primary/15 to-accent/10">
               <span className="text-xs text-foreground-muted">{room.gameName ?? 'Unknown Game'}</span>
+              <Badge
+                variant={statusColors[room.status] ?? 'default'}
+                className="absolute right-2.5 top-2.5"
+              >
+                {room.status}
+              </Badge>
             </div>
           )}
 
           <div className="p-4">
-            <div className="flex items-start justify-between">
-              <h3 className="font-semibold text-foreground line-clamp-1">{room.title}</h3>
-              <Badge variant={statusColors[room.status] ?? 'default'}>{room.status}</Badge>
-            </div>
+            <h3 className="font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+              {room.title}
+            </h3>
 
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               <Badge>{room.region}</Badge>
@@ -310,32 +325,37 @@ function RoomCard({ room }: { room: RoomResponse }) {
 
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-foreground-muted">
-                <span>{room.currentMemberCount} / {room.maxMembers} members</span>
-                <span>{Math.round(capacityPercent)}%</span>
+                <span className="flex items-center gap-1.5">
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                  {room.currentMemberCount} / {room.maxMembers}
+                </span>
+                <span className={isFull ? 'font-medium text-danger' : ''}>{Math.round(capacityPercent)}%</span>
               </div>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-hover">
+              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-surface-hover">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${capacityPercent}%` }}
                   transition={{ duration: 0.6, delay: 0.2 }}
                   className={`h-full rounded-full ${
-                    capacityPercent >= 100
-                      ? 'bg-danger'
-                      : capacityPercent >= 70
-                        ? 'bg-warning'
-                        : 'bg-accent'
+                    isFull ? 'bg-danger' : capacityPercent >= 70 ? 'bg-warning' : 'bg-accent'
                   }`}
                 />
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-3.5 flex items-center justify-between">
               <span className="text-xs text-foreground-subtle">
-                {new Date(room.createdAt).toLocaleDateString()}
+                {new Date(room.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
               </span>
-              <Button variant="ghost" size="sm" className="opacity-0 transition-opacity group-hover:opacity-100">
-                Join →
-              </Button>
+              <span className={`text-xs font-medium transition-colors ${
+                room.status === 'Open'
+                  ? 'text-primary group-hover:text-primary-hover'
+                  : 'text-foreground-subtle'
+              }`}>
+                {room.status === 'Open' ? 'Join →' : room.status === 'Full' ? 'Full' : room.status}
+              </span>
             </div>
           </div>
         </motion.div>

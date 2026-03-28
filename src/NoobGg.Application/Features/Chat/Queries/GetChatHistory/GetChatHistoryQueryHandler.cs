@@ -53,9 +53,14 @@ public class GetChatHistoryQueryHandler
             .Limit(request.PageSize)
             .ToListAsync(ct);
 
+        var senderIds = items.Select(m => m.SenderId).Distinct().ToList();
+        var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var senderProfiles = await profiles.Find(p => senderIds.Contains(p.UserId)).ToListAsync(ct);
+        var avatarMap = senderProfiles.ToDictionary(p => p.UserId, p => p.AvatarUrl);
+
         var result = new PagedResult<ChatMessageResponse>
         {
-            Items = items.Select(MapToResponse).Reverse().ToList(),
+            Items = items.Select(m => MapToResponse(m, avatarMap)).Reverse().ToList(),
             TotalCount = (int)totalCount,
             Page = request.Page,
             PageSize = request.PageSize
@@ -64,12 +69,13 @@ public class GetChatHistoryQueryHandler
         return Result<PagedResult<ChatMessageResponse>>.Success(result);
     }
 
-    private static ChatMessageResponse MapToResponse(Message m) => new()
+    private static ChatMessageResponse MapToResponse(Message m, Dictionary<string, string?> avatarMap) => new()
     {
         Id = m.Id,
         RoomId = m.RoomId,
         SenderId = m.SenderId,
         SenderUsername = m.SenderUsername,
+        SenderAvatarUrl = avatarMap.GetValueOrDefault(m.SenderId),
         Content = m.Content,
         Type = m.Type,
         IsEdited = m.IsEdited,

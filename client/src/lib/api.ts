@@ -1,9 +1,17 @@
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '',
+  baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 });
+
+export function resolveFileUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  if (path.startsWith('http')) return path;
+  return `${API_BASE}${path}`;
+}
 
 interface AuthAccessor {
   getAccessToken: () => string | null;

@@ -48,7 +48,8 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
             await Groups.AddToGroupAsync(Context.ConnectionId, $"dm:{conv.Id}");
         }
 
-        await Clients.Others.PresenceChanged(userId, true);
+        if (await ShouldBroadcastPresence(userId))
+            await Clients.Others.PresenceChanged(userId, true);
 
         _logger.LogInformation("User {UserId} connected to DirectMessageHub", userId);
         await base.OnConnectedAsync();
@@ -61,7 +62,8 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
 
         if (!_presenceTracker.IsOnline(userId))
         {
-            await Clients.Others.PresenceChanged(userId, false);
+            if (await ShouldBroadcastPresence(userId))
+                await Clients.Others.PresenceChanged(userId, false);
         }
 
         _logger.LogInformation("User {UserId} disconnected from DirectMessageHub", userId);
@@ -95,7 +97,30 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
             (b.BlockerId == userId && b.BlockedUserId == partnerId) ||
             (b.BlockerId == partnerId && b.BlockedUserId == userId)
         ).AnyAsync();
-        if (isBlocked) return;
+        if (isBlocked)
+            throw new HubException("Cannot send message to this user");
+
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        var partnerSettings = await settingsCol.Find(s => s.UserId == partnerId).FirstOrDefaultAsync();
+
+        if (partnerSettings is not null)
+        {
+            switch (partnerSettings.DmPermission)
+            {
+                case DmPermission.Nobody:
+                    throw new HubException("This user is not accepting direct messages");
+                case DmPermission.FriendsOnly:
+                    var friendships = _mongoContext.GetCollection<Friendship>(CollectionNames.Friendships);
+                    var areFriends = await friendships.Find(f =>
+                        f.Status == FriendshipStatus.Accepted &&
+                        ((f.RequesterId == userId && f.AddresseeId == partnerId) ||
+                         (f.RequesterId == partnerId && f.AddresseeId == userId))
+                    ).AnyAsync();
+                    if (!areFriends)
+                        throw new HubException("This user only accepts messages from friends");
+                    break;
+            }
+        }
 
         var dm = new DirectMessage
         {
@@ -152,6 +177,9 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
         if (conv is null) return;
         if (conv.Participant1Id != userId && conv.Participant2Id != userId) return;
 
+        var partnerId = conv.Participant1Id == userId ? conv.Participant2Id : conv.Participant1Id;
+        if (await IsBlocked(userId, partnerId)) return;
+
         var isP1 = conv.Participant1Id == userId;
         await conversations.UpdateOneAsync(
             c => c.Id == conv.Id,
@@ -174,14 +202,47 @@ public class DirectMessageHub : Hub<IDirectMessageClient>
 
     public async Task StartTyping(string conversationId)
     {
+        var userId = GetUserId();
+        var partnerId = await GetConversationPartnerId(conversationId, userId);
+        if (partnerId is null || await IsBlocked(userId, partnerId)) return;
+
         await Clients.OthersInGroup($"dm:{conversationId}")
-            .UserTypingDM(conversationId, GetUserId(), GetUsername());
+            .UserTypingDM(conversationId, userId, GetUsername());
     }
 
     public async Task StopTyping(string conversationId)
     {
+        var userId = GetUserId();
+        var partnerId = await GetConversationPartnerId(conversationId, userId);
+        if (partnerId is null || await IsBlocked(userId, partnerId)) return;
+
         await Clients.OthersInGroup($"dm:{conversationId}")
-            .UserStoppedTypingDM(conversationId, GetUserId());
+            .UserStoppedTypingDM(conversationId, userId);
+    }
+
+    private async Task<bool> IsBlocked(string userId1, string userId2)
+    {
+        var blocks = _mongoContext.GetCollection<Block>(CollectionNames.Blocks);
+        return await blocks.Find(b =>
+            (b.BlockerId == userId1 && b.BlockedUserId == userId2) ||
+            (b.BlockerId == userId2 && b.BlockedUserId == userId1)
+        ).AnyAsync();
+    }
+
+    private async Task<string?> GetConversationPartnerId(string conversationId, string userId)
+    {
+        var conversations = _mongoContext.GetCollection<Conversation>(CollectionNames.Conversations);
+        var conv = await conversations.Find(c => c.Id == conversationId).FirstOrDefaultAsync();
+        if (conv is null) return null;
+        if (conv.Participant1Id != userId && conv.Participant2Id != userId) return null;
+        return conv.Participant1Id == userId ? conv.Participant2Id : conv.Participant1Id;
+    }
+
+    private async Task<bool> ShouldBroadcastPresence(string userId)
+    {
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        var settings = await settingsCol.Find(s => s.UserId == userId).FirstOrDefaultAsync();
+        return settings?.ShowOnlineStatus ?? true;
     }
 
     private string GetUserId()

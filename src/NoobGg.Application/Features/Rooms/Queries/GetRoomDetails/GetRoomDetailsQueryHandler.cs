@@ -35,9 +35,14 @@ public class GetRoomDetailsQueryHandler : IRequestHandler<GetRoomDetailsQuery, R
         var userDocs = await users.Find(u => memberUserIds.Contains(u.Id)).ToListAsync(ct);
         var usernameMap = userDocs.ToDictionary(u => u.Id, u => u.Username);
 
+        var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var memberProfiles = await profiles.Find(p => memberUserIds.Contains(p.UserId)).ToListAsync(ct);
+        var avatarMap = memberProfiles.ToDictionary(p => p.UserId, p => p.AvatarUrl);
+
         var memberResponses = members.Select(m => new RoomMemberResponse(
             m.UserId,
             usernameMap.GetValueOrDefault(m.UserId, "Unknown"),
+            avatarMap.GetValueOrDefault(m.UserId),
             m.Role.ToString(),
             m.JoinedAt)).ToList();
 

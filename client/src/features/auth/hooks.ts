@@ -7,7 +7,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (data) => {
-      useAuthStore.getState().login(data.user, data.accessToken, data.refreshToken);
+      useAuthStore.getState().login(data.user, data.accessToken, data.refreshToken, data.isDeactivated);
     },
   });
 }

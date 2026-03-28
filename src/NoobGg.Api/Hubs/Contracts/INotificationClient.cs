@@ -6,4 +6,7 @@ public interface INotificationClient
 {
     Task ReceiveNotification(NotificationResponse notification);
     Task UnreadCountChanged(int count);
+    Task BlockListChanged(string userId, bool isBlocked);
+    Task FriendListChanged();
+    Task ForceDisconnect(string reason);
 }

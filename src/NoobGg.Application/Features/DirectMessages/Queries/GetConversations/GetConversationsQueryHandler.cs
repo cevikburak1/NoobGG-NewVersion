@@ -30,6 +30,14 @@ public class GetConversationsQueryHandler
         var conversations = _mongoContext.GetCollection<Conversation>(CollectionNames.Conversations);
         var users = _mongoContext.GetCollection<User>(CollectionNames.Users);
         var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var blocksCol = _mongoContext.GetCollection<Block>(CollectionNames.Blocks);
+
+        var blockList = await blocksCol.Find(b =>
+            b.BlockerId == userId || b.BlockedUserId == userId
+        ).ToListAsync(ct);
+        var blockedIds = new HashSet<string>();
+        foreach (var b in blockList)
+            blockedIds.Add(b.BlockerId == userId ? b.BlockedUserId : b.BlockerId);
 
         var filter = Builders<Conversation>.Filter.Or(
             Builders<Conversation>.Filter.Eq(c => c.Participant1Id, userId),
@@ -39,6 +47,12 @@ public class GetConversationsQueryHandler
             .Find(filter)
             .SortByDescending(c => c.LastMessageAt)
             .ToListAsync(ct);
+
+        convList = convList.Where(c =>
+        {
+            var partnerId = c.Participant1Id == userId ? c.Participant2Id : c.Participant1Id;
+            return !blockedIds.Contains(partnerId);
+        }).ToList();
 
         var partnerIds = convList
             .Select(c => c.Participant1Id == userId ? c.Participant2Id : c.Participant1Id)

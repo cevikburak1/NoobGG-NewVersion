@@ -10,7 +10,7 @@ interface BadgeProps {
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
-  default: 'bg-surface-hover text-foreground-muted',
+  default: 'bg-surface-active/80 text-foreground-muted',
   primary: 'bg-primary/20 text-primary-hover',
   accent: 'bg-accent/20 text-accent',
   danger: 'bg-danger/20 text-danger',

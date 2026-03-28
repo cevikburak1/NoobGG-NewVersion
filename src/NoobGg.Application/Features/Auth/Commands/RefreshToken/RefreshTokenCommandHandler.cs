@@ -49,6 +49,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         if (user.IsBanned)
             return Result<AuthResponse>.Fail($"Account is banned: {user.BanReason ?? "No reason provided"}", 403);
 
+        var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
+        var userSettings = await settingsCol.Find(s => s.UserId == user.Id).FirstOrDefaultAsync(ct);
+        var isDeactivated = userSettings?.IsDeactivated ?? false;
+
         var newRefreshTokenString = _jwtTokenService.GenerateRefreshToken();
 
         // Rotate: revoke old token, link to new one
@@ -70,6 +74,9 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         };
         await refreshTokens.InsertOneAsync(newRefreshToken, cancellationToken: ct);
 
+        var profilesCol = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var profile = await profilesCol.Find(p => p.UserId == user.Id).FirstOrDefaultAsync(ct);
+
         var accessToken = _jwtTokenService.GenerateAccessToken(user.Id, user.Username, user.Role.ToString());
 
         return Result<AuthResponse>.Success(new AuthResponse
@@ -83,10 +90,12 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
                 Email = user.Email,
                 Username = user.Username,
                 Role = user.Role.ToString(),
+                AvatarUrl = profile?.AvatarUrl,
                 IsEmailVerified = user.IsEmailVerified,
                 IsProfileComplete = user.IsProfileComplete,
                 CreatedAt = user.CreatedAt
-            }
+            },
+            IsDeactivated = isDeactivated
         });
     }
 

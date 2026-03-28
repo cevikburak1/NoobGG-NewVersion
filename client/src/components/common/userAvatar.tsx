@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { resolveFileUrl } from '@/lib/api';
 
 interface UserAvatarProps {
   username: string;
@@ -16,11 +17,12 @@ const sizeStyles = {
 
 export function UserAvatar({ username, avatarUrl, size = 'md', className }: UserAvatarProps) {
   const initials = username.slice(0, 2).toUpperCase();
+  const resolvedUrl = resolveFileUrl(avatarUrl);
 
-  if (avatarUrl) {
+  if (resolvedUrl) {
     return (
       <img
-        src={avatarUrl}
+        src={resolvedUrl}
         alt={username}
         className={cn('rounded-full object-cover', sizeStyles[size], className)}
       />

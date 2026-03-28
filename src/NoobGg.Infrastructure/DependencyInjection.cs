@@ -10,6 +10,7 @@ using NoobGg.Infrastructure.Persistence;
 using NoobGg.Infrastructure.Rawg;
 using NoobGg.Infrastructure.Moderation;
 using NoobGg.Infrastructure.Services;
+using NoobGg.Infrastructure.Storage;
 using NoobGg.Infrastructure.Subscriptions;
 using StackExchange.Redis;
 
@@ -27,6 +28,7 @@ public static class DependencyInjection
         services.AddSubscriptionServices();
         services.AddModerationServices();
         services.AddEmailServices(configuration);
+        services.AddFileStorage(configuration);
 
         return services;
     }
@@ -84,6 +86,13 @@ public static class DependencyInjection
     {
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.AddTransient<IEmailService, SmtpEmailService>();
+        return services;
+    }
+
+    private static IServiceCollection AddFileStorage(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<FileStorageSettings>(configuration.GetSection(FileStorageSettings.SectionName));
+        services.AddSingleton<IFileStorageService, LocalFileStorageService>();
         return services;
     }
 

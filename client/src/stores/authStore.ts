@@ -24,9 +24,10 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isInitialized: boolean;
+  isDeactivated: boolean;
 
   isAuthenticated: () => boolean;
-  login: (user: UserResponse, accessToken: string, refreshToken: string) => void;
+  login: (user: UserResponse, accessToken: string, refreshToken: string, isDeactivated?: boolean) => void;
   logout: () => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   setUser: (user: UserResponse) => void;
@@ -38,12 +39,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   refreshToken: getPersistedToken(),
   isInitialized: false,
+  isDeactivated: false,
 
   isAuthenticated: () => get().accessToken !== null && get().user !== null,
 
-  login: (user, accessToken, refreshToken) => {
+  login: (user, accessToken, refreshToken, isDeactivated = false) => {
     persistToken(refreshToken);
-    set({ user, accessToken, refreshToken });
+    set({ user, accessToken, refreshToken, isDeactivated });
   },
 
   logout: () => {

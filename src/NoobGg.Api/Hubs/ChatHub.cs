@@ -146,12 +146,16 @@ public class ChatHub : Hub<IChatClient>
         var collection = _mongoContext.GetCollection<Message>(CollectionNames.Messages);
         await collection.InsertOneAsync(message);
 
+        var profilesCol = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var senderProfile = await profilesCol.Find(p => p.UserId == userId).FirstOrDefaultAsync();
+
         var response = new ChatMessageResponse
         {
             Id = message.Id,
             RoomId = message.RoomId,
             SenderId = message.SenderId,
             SenderUsername = message.SenderUsername,
+            SenderAvatarUrl = senderProfile?.AvatarUrl,
             Content = message.Content,
             Type = message.Type,
             IsEdited = false,
@@ -207,13 +211,21 @@ public class ChatHub : Hub<IChatClient>
     {
         var onlineUsers = await _presenceService.GetOnlineUsersInRoomAsync(roomId);
 
+        var userIds = onlineUsers.Select(u => u.UserId).ToList();
+        var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
+        var onlineProfiles = await profiles
+            .Find(p => userIds.Contains(p.UserId))
+            .ToListAsync();
+        var avatarMap = onlineProfiles.ToDictionary(p => p.UserId, p => p.AvatarUrl);
+
         var response = new RoomPresenceResponse
         {
             RoomId = roomId,
             OnlineUsers = onlineUsers.Select(u => new OnlineUserInfo
             {
                 UserId = u.UserId,
-                Username = u.Username
+                Username = u.Username,
+                AvatarUrl = avatarMap.GetValueOrDefault(u.UserId)
             }).ToList(),
             OnlineCount = onlineUsers.Count
         };
