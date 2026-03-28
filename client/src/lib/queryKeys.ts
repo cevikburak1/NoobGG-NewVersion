@@ -58,4 +58,8 @@ export const queryKeys = {
   favorites: {
     list: () => ['favorites'] as const,
   },
+  recommendations: {
+    players: (gameId?: string) => ['recommendations', 'players', gameId] as const,
+    rooms: (gameId?: string) => ['recommendations', 'rooms', gameId] as const,
+  },
 } as const;

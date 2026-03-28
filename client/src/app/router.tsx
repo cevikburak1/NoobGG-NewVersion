@@ -24,6 +24,7 @@ import OnboardingPage from '@/pages/onboarding';
 import MessagesPage from '@/pages/messages';
 import FriendsPage from '@/pages/friends';
 import FavoritesPage from '@/pages/favorites';
+import RecommendationsPage from '@/pages/recommendations';
 
 const routes: RouteObject[] = [
   {
@@ -89,6 +90,16 @@ const routes: RouteObject[] = [
           <ProtectedRoute>
             <RequireProfile>
               <DiscoverPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/recommendations',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <RecommendationsPage />
             </RequireProfile>
           </ProtectedRoute>
         ),
