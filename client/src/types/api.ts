@@ -25,6 +25,15 @@ export interface RoomFilters {
   pageSize?: number;
 }
 
+export interface GuildFilters {
+  gameId?: string;
+  region?: Region;
+  language?: Language;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface ReportFilters {
   status?: ReportStatus;
   targetType?: ReportTargetType;

@@ -4,6 +4,7 @@ using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Common.Models;
 using NoobGg.Application.Features.Rooms.DTOs;
+using NoobGg.Application.Features.Rooms.Helpers;
 using NoobGg.Domain.Entities;
 using NoobGg.Domain.Enums;
 
@@ -77,18 +78,27 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
 
         await roomMembers.InsertOneAsync(ownerMember, cancellationToken: ct);
 
+        await RoomEloHelper.RecalculateAsync(_mongoContext, room.Id, ct);
+
         var users = _mongoContext.GetCollection<User>(CollectionNames.Users);
         var user = await users.Find(u => u.Id == userId).FirstOrDefaultAsync(ct);
 
         var profilesCol = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
         var ownerProfile = await profilesCol.Find(p => p.UserId == userId).FirstOrDefaultAsync(ct);
 
+        var gameProfilesCol = _mongoContext.GetCollection<UserGameProfile>(CollectionNames.UserGameProfiles);
+        var ownerGameProfile = await gameProfilesCol
+            .Find(gp => gp.UserId == userId && gp.GameId == room.GameId)
+            .FirstOrDefaultAsync(ct);
+
         var memberResponse = new RoomMemberResponse(
             userId,
             user?.Username ?? "Unknown",
             ownerProfile?.AvatarUrl,
             ownerMember.Role.ToString(),
-            ownerMember.JoinedAt);
+            ownerMember.JoinedAt,
+            ownerGameProfile?.EloPoints,
+            ownerGameProfile?.RankTier.ToString());
 
         var response = new RoomDetailResponse(
             room.Id,
@@ -108,7 +118,9 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Resul
             room.Status.ToString(),
             room.VoiceChannelId,
             room.CreatedAt,
-            [memberResponse]);
+            [memberResponse],
+            ownerGameProfile?.EloPoints,
+            ownerGameProfile != null ? ownerGameProfile.RankTier.ToString() : null);
 
         await _roomNotification.NotifyRoomListChangedAsync(ct);
 

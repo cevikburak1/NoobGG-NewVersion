@@ -24,6 +24,9 @@ import OnboardingPage from '@/pages/onboarding';
 import MessagesPage from '@/pages/messages';
 import FriendsPage from '@/pages/friends';
 import FavoritesPage from '@/pages/favorites';
+import GuildListPage from '@/pages/guildList';
+import GuildDetailPage from '@/pages/guildDetail';
+import LeaderboardPage from '@/pages/leaderboard';
 
 const routes: RouteObject[] = [
   {
@@ -63,6 +66,26 @@ const routes: RouteObject[] = [
         ),
       },
       {
+        path: '/guilds',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <GuildListPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/guilds/:guildId',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <GuildDetailPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: '/rooms/:roomId',
         element: (
           <ProtectedRoute>
@@ -73,6 +96,7 @@ const routes: RouteObject[] = [
         ),
       },
       { path: '/subscriptions', element: <SubscriptionsPage /> },
+      { path: '/leaderboard', element: <LeaderboardPage /> },
       {
         path: '/games/:gameId',
         element: (

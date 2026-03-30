@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Common.Models;
+using NoobGg.Application.Features.Elo.Helpers;
 using NoobGg.Application.Features.Rooms.DTOs;
 using NoobGg.Domain.Entities;
 
@@ -39,15 +40,46 @@ public class GetRoomDetailsQueryHandler : IRequestHandler<GetRoomDetailsQuery, R
         var memberProfiles = await profiles.Find(p => memberUserIds.Contains(p.UserId)).ToListAsync(ct);
         var avatarMap = memberProfiles.ToDictionary(p => p.UserId, p => p.AvatarUrl);
 
-        var memberResponses = members.Select(m => new RoomMemberResponse(
-            m.UserId,
-            usernameMap.GetValueOrDefault(m.UserId, "Unknown"),
-            avatarMap.GetValueOrDefault(m.UserId),
-            m.Role.ToString(),
-            m.JoinedAt)).ToList();
+        var gameProfiles = _mongoContext.GetCollection<UserGameProfile>(CollectionNames.UserGameProfiles);
+        var memberGameProfiles = await gameProfiles
+            .Find(gp => memberUserIds.Contains(gp.UserId) && gp.GameId == room.GameId)
+            .ToListAsync(ct);
+        var eloMap = memberGameProfiles.ToDictionary(gp => gp.UserId);
+
+        var memberResponses = members.Select(m =>
+        {
+            eloMap.TryGetValue(m.UserId, out var gp);
+            return new RoomMemberResponse(
+                m.UserId,
+                usernameMap.GetValueOrDefault(m.UserId, "Unknown"),
+                avatarMap.GetValueOrDefault(m.UserId),
+                m.Role.ToString(),
+                m.JoinedAt,
+                gp?.EloPoints,
+                gp?.RankTier.ToString());
+        }).ToList();
 
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
         var game = await games.Find(g => g.Id == room.GameId).FirstOrDefaultAsync(ct);
+
+        int? averageElo = null;
+        string? averageRankTier = null;
+        var eloValues = memberResponses.Where(m => m.EloPoints.HasValue).Select(m => m.EloPoints!.Value).ToList();
+        if (eloValues.Count > 0)
+        {
+            averageElo = (int)Math.Round(eloValues.Average());
+            averageRankTier = EloCalculator.GetTier(averageElo.Value).ToString();
+        }
+
+        if (averageElo != room.AverageElo || averageRankTier != room.AverageRankTier)
+        {
+            _ = rooms.UpdateOneAsync(
+                Builders<Room>.Filter.Eq(r => r.Id, room.Id),
+                Builders<Room>.Update
+                    .Set(r => r.AverageElo, averageElo)
+                    .Set(r => r.AverageRankTier, averageRankTier),
+                cancellationToken: CancellationToken.None);
+        }
 
         var response = new RoomDetailResponse(
             room.Id,
@@ -67,7 +99,9 @@ public class GetRoomDetailsQueryHandler : IRequestHandler<GetRoomDetailsQuery, R
             room.Status.ToString(),
             room.VoiceChannelId,
             room.CreatedAt,
-            memberResponses);
+            memberResponses,
+            averageElo,
+            averageRankTier);
 
         return Result<RoomDetailResponse>.Success(response);
     }

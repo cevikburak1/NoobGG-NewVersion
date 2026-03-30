@@ -20,4 +20,6 @@ public record RoomDetailResponse(
     string Status,
     string? VoiceChannelId,
     DateTime CreatedAt,
-    List<RoomMemberResponse> Members);
+    List<RoomMemberResponse> Members,
+    int? AverageElo,
+    string? AverageRankTier);

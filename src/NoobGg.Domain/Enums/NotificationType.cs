@@ -11,5 +11,11 @@ public enum NotificationType
     DirectMessage,
     ReportResolved,
     SubscriptionChanged,
-    SystemMessage
+    SystemMessage,
+    GuildInvite,
+    GuildJoined,
+    GuildLeft,
+    GuildJoinRequestReceived,
+    GuildJoinRequestApproved,
+    GuildJoinRequestRejected
 }

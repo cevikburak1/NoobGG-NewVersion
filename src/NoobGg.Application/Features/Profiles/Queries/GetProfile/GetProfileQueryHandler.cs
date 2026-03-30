@@ -128,7 +128,9 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
                 CommunicationPreference = gp.CommunicationPreference.ToString(),
                 HoursPlayed = gp.HoursPlayed,
                 LookingForTeam = gp.LookingForTeam,
-                Note = gp.Note
+                Note = gp.Note,
+                EloPoints = gp.EloPoints,
+                RankTier = gp.RankTier.ToString()
             };
         }).ToList();
 

@@ -5,4 +5,6 @@ public record RoomMemberResponse(
     string Username,
     string? AvatarUrl,
     string Role,
-    DateTime JoinedAt);
+    DateTime JoinedAt,
+    int? EloPoints,
+    string? RankTier);

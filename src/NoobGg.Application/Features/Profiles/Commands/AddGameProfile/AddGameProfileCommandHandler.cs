@@ -70,7 +70,9 @@ public class AddGameProfileCommandHandler : IRequestHandler<AddGameProfileComman
             HoursPlayed = gp.HoursPlayed,
             LookingForTeam = gp.LookingForTeam,
             Note = gp.Note,
-            InGameName = request.InGameName
+            InGameName = request.InGameName,
+            EloPoints = gp.EloPoints,
+            RankTier = gp.RankTier.ToString()
         });
     }
 }

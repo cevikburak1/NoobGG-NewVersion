@@ -26,9 +26,12 @@ export type SubscriptionTier = 'Free' | 'Plus' | 'Pro';
 
 export type SubscriptionStatus = 'Active' | 'Cancelled' | 'Expired' | 'PastDue';
 
+export type GuildMemberRole = 'Owner' | 'Admin' | 'Member';
+
 export type NotificationType =
   | 'FriendRequest' | 'FriendAccepted' | 'RoomInvite'
-  | 'ReportResolved' | 'SubscriptionChanged' | 'SystemMessage';
+  | 'ReportResolved' | 'SubscriptionChanged' | 'SystemMessage'
+  | 'GuildInvite' | 'GuildJoined' | 'GuildLeft';
 
 export type ExperienceLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
 

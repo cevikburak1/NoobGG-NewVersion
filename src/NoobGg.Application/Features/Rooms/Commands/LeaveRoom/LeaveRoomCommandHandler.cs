@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Common.Models;
+using NoobGg.Application.Features.Rooms.Helpers;
 using NoobGg.Domain.Entities;
 using NoobGg.Domain.Enums;
 
@@ -70,6 +71,8 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
                     .Set(r => r.Status, RoomStatus.Closed)
                     .Set(r => r.ClosedAt, DateTime.UtcNow)
                     .Set(r => r.CurrentMemberCount, 0)
+                    .Set(r => r.AverageElo, (int?)null)
+                    .Set(r => r.AverageRankTier, (string?)null)
                     .Set(r => r.UpdatedAt, DateTime.UtcNow),
                 cancellationToken: ct);
 
@@ -109,6 +112,8 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
                 Builders<Room>.Update.Set(r => r.Status, RoomStatus.Open),
                 cancellationToken: ct);
         }
+
+        await RoomEloHelper.RecalculateAsync(_mongoContext, request.RoomId, ct);
 
         await _roomNotification.NotifyMemberLeftAsync(
             request.RoomId, userId, _currentUser.Username ?? "Unknown", ct);

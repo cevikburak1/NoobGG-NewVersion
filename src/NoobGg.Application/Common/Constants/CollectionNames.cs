@@ -24,4 +24,9 @@ public static class CollectionNames
     public const string Conversations = "conversations";
     public const string DirectMessages = "directMessages";
     public const string UserSettings = "userSettings";
+    public const string Guilds = "guilds";
+    public const string GuildMembers = "guildMembers";
+    public const string GuildInvites = "guildInvites";
+    public const string GuildJoinRequests = "guildJoinRequests";
+    public const string MatchResults = "matchResults";
 }

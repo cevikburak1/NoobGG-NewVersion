@@ -76,7 +76,9 @@ public class GetRoomsQueryHandler : IRequestHandler<GetRoomsQuery, Result<PagedR
                 r.Language.ToString(),
                 r.Tags,
                 r.Status.ToString(),
-                r.CreatedAt);
+                r.CreatedAt,
+                r.AverageElo,
+                r.AverageRankTier);
         }).ToList();
 
         var result = new PagedResult<RoomResponse>

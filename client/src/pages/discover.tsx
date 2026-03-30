@@ -3,11 +3,14 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useGameBrowse, useGameSearch } from '@/features/games/hooks';
 import { useDiscoverPlayers } from '@/features/users/hooks';
+import { useRecommendedPlayers } from '@/features/recommendations/hooks';
+import { useAuthStore } from '@/stores/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Button, Input, Badge, AnimatedPage, staggerContainer, staggerItem } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { GameCard } from '@/components/common/gameCard';
 import type { DiscoverPlayerResponse } from '@/features/users/types';
+import type { RecommendedPlayerResponse } from '@/features/recommendations/types';
 
 const REGIONS = ['All', 'EU', 'NA', 'TR', 'AS', 'SA', 'OCE', 'ME', 'AF', 'CIS', 'SEA'] as const;
 const LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced', 'Expert'] as const;
@@ -22,6 +25,7 @@ const LEVEL_META: Record<string, { color: 'default' | 'success' | 'primary' | 'w
 };
 
 export default function DiscoverPage() {
+  const isAuth = useAuthStore((s) => s.isAuthenticated());
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'players' | 'games'>('games');
 
@@ -116,6 +120,9 @@ export default function DiscoverPage() {
     onlyF2P ||
     onlyLFT ||
     gameFilterId;
+
+  const { data: recommendedPlayers } = useRecommendedPlayers(6);
+  const showRecommendations = isAuth && !hasActiveFilters && activeTab === 'players';
 
   const totalGames = gamesResult?.totalCount ?? 0;
   const totalPlayers = playersResult?.totalCount ?? 0;
@@ -314,6 +321,29 @@ export default function DiscoverPage() {
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* Recommended Players */}
+        {showRecommendations && recommendedPlayers && recommendedPlayers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">✨</span>
+                <h2 className="text-sm font-semibold text-foreground">Recommended for you</h2>
+              </div>
+              <span className="text-xs text-foreground-subtle">Based on your game profiles</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {recommendedPlayers.map((player) => (
+                <RecommendedPlayerCard key={player.id} player={player} />
+              ))}
+            </div>
+            <div className="h-px bg-border/50" />
+          </motion.div>
+        )}
 
         {/* Content */}
         <AnimatePresence mode="wait">
@@ -553,6 +583,46 @@ function ToggleChip({ label, active, onToggle }: { label: string; active: boolea
     >
       {label}
     </button>
+  );
+}
+
+function RecommendedPlayerCard({ player }: { player: RecommendedPlayerResponse }) {
+  const meta = LEVEL_META[player.experienceLevel ?? ''];
+
+  return (
+    <Link to={`/profile/${player.id}`}>
+      <motion.div
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.2 }}
+        className="group flex items-center gap-3.5 rounded-xl border border-primary/15 bg-primary/3 p-3.5 transition-colors hover:border-primary/30 hover:bg-primary/6"
+      >
+        <div className="shrink-0">
+          <UserAvatar username={player.username} avatarUrl={player.avatarUrl} size="md" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-sm font-semibold text-foreground">{player.username}</span>
+            {player.lookingForTeam && (
+              <Badge variant="accent" className="shrink-0 text-[10px]">LFT</Badge>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {meta && (
+              <Badge variant={meta.color} className="text-[10px]">
+                {meta.icon} {player.experienceLevel}
+              </Badge>
+            )}
+            {player.region && <Badge className="text-[10px]">{player.region}</Badge>}
+          </div>
+          {player.matchReasons.length > 0 && (
+            <p className="mt-1.5 truncate text-[11px] text-primary/80">
+              {player.matchReasons.slice(0, 2).join(' · ')}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0 text-xs font-bold text-primary/60">{player.score}</div>
+      </motion.div>
+    </Link>
   );
 }
 

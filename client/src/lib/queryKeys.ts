@@ -1,4 +1,4 @@
-import type { ReportFilters, RoomFilters } from '@/types/api';
+import type { GuildFilters, ReportFilters, RoomFilters } from '@/types/api';
 import type { GameBrowseParams } from '@/features/games/types';
 import type { PlayerDiscoverParams } from '@/features/users/types';
 
@@ -11,6 +11,12 @@ export const queryKeys = {
     list: (filters: RoomFilters) => ['rooms', 'list', filters] as const,
     detail: (id: string) => ['rooms', 'detail', id] as const,
     invites: () => ['rooms', 'invites'] as const,
+  },
+  guilds: {
+    all: () => ['guilds'] as const,
+    list: (filters: GuildFilters) => ['guilds', 'list', filters] as const,
+    detail: (id: string) => ['guilds', 'detail', id] as const,
+    invites: () => ['guilds', 'invites'] as const,
   },
   chat: {
     messages: (roomId: string) => ['chat', 'messages', roomId] as const,
@@ -57,5 +63,13 @@ export const queryKeys = {
   },
   favorites: {
     list: () => ['favorites'] as const,
+  },
+  recommendations: {
+    players: (limit: number) => ['recommendations', 'players', limit] as const,
+    rooms: (limit: number) => ['recommendations', 'rooms', limit] as const,
+  },
+  elo: {
+    leaderboard: (gameId: string, page: number) => ['elo', 'leaderboard', gameId, page] as const,
+    history: (userId: string, gameId: string) => ['elo', 'history', userId, gameId] as const,
   },
 } as const;

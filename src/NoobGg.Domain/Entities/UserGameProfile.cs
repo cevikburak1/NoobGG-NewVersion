@@ -1,4 +1,5 @@
 using NoobGg.Domain.Enums;
+using NoobGg.Domain.ValueObjects;
 
 namespace NoobGg.Domain.Entities;
 
@@ -15,4 +16,7 @@ public class UserGameProfile : BaseEntity
     public int? HoursPlayed { get; set; }
     public bool LookingForTeam { get; set; }
     public string? Note { get; set; }
+    public int EloPoints { get; set; } = 1500;
+    public RankTier RankTier { get; set; } = RankTier.Gold;
+    public List<EloSnapshot> EloHistory { get; set; } = [];
 }

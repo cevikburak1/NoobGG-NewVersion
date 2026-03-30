@@ -49,6 +49,8 @@ export interface GameProfileResponse {
   lookingForTeam: boolean;
   note: string | null;
   inGameName: string | null;
+  eloPoints: number;
+  rankTier: string;
 }
 
 export interface UpdateProfileRequest {

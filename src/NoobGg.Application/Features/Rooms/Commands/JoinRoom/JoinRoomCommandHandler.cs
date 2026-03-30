@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Common.Models;
+using NoobGg.Application.Features.Rooms.Helpers;
 using NoobGg.Domain.Entities;
 using NoobGg.Domain.Enums;
 
@@ -107,6 +108,8 @@ public class JoinRoomCommandHandler : IRequestHandler<JoinRoomCommand, Result>
                 Builders<Room>.Update.Set(r => r.Status, RoomStatus.Full),
                 cancellationToken: ct);
         }
+
+        await RoomEloHelper.RecalculateAsync(_mongoContext, request.RoomId, ct);
 
         await _roomNotification.NotifyMemberJoinedAsync(
             request.RoomId, userId, _currentUser.Username ?? "Unknown", ct);

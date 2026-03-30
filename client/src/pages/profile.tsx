@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/features/profile/hooks';
 import { useBlockUser, useUnblockUser } from '@/features/blocks/hooks';
 import { useSendFriendRequest, useAcceptFriendRequest, useRemoveFriend } from '@/features/friends/hooks';
 import { useToggleFavorite } from '@/features/favorites/hooks';
+import { useEloHistory } from '@/features/elo/hooks';
 import {
   Button,
   Badge,
@@ -15,6 +17,8 @@ import {
   staggerItem,
 } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
+import { RankBadge } from '@/components/elo/rankBadge';
+import { EloChart } from '@/components/elo/eloChart';
 import { resolveFileUrl } from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 
@@ -398,53 +402,7 @@ export default function ProfilePage() {
               className="grid gap-4 sm:grid-cols-2"
             >
               {profile.games.map((gp) => (
-                <motion.div key={gp.id} variants={staggerItem}>
-                  <Card className="group hover:border-primary/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      {gp.gameImageUrl ? (
-                        <img
-                          src={gp.gameImageUrl}
-                          alt={gp.gameName}
-                          className="w-12 h-12 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded bg-border flex items-center justify-center text-foreground-muted">
-                          🎮
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-foreground truncate">{gp.gameName}</h3>
-                        {gp.inGameName && (
-                          <p className="text-sm text-foreground-muted">IGN: {gp.inGameName}</p>
-                        )}
-                      </div>
-                      {gp.lookingForTeam && <Badge variant="accent">LFT</Badge>}
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {gp.rank && <Badge variant="primary">{gp.rank}</Badge>}
-                      <Badge>{gp.experienceLevel}</Badge>
-                      <Badge>{gp.region}</Badge>
-                      <Badge>{gp.communicationPreference}</Badge>
-                      {gp.hoursPlayed != null && <Badge>{gp.hoursPlayed}h</Badge>}
-                    </div>
-                    {gp.hoursPlayed != null && (
-                      <div className="mt-3">
-                        <ProgressBar
-                          value={Math.min(gp.hoursPlayed, 2000)}
-                          max={2000}
-                          variant="accent"
-                          size="sm"
-                        />
-                        <p className="mt-1 text-xs text-foreground-subtle">
-                          {gp.hoursPlayed} / 2000h milestone
-                        </p>
-                      </div>
-                    )}
-                    {gp.note && (
-                      <p className="mt-2 text-xs text-foreground-muted italic">{gp.note}</p>
-                    )}
-                  </Card>
-                </motion.div>
+                <GameProfileCard key={gp.id} gp={gp} userId={profile.userId} />
               ))}
             </motion.div>
           ) : (
@@ -465,6 +423,83 @@ export default function ProfilePage() {
         </motion.div>
       </div>
     </AnimatedPage>
+  );
+}
+
+const tierColors: Record<string, string> = {
+  Bronze: '#b45309',
+  Silver: '#9ca3af',
+  Gold: '#eab308',
+  Platinum: '#14b8a6',
+  Diamond: '#3b82f6',
+  Master: '#a855f7',
+  Grandmaster: '#ef4444',
+};
+
+function GameProfileCard({ gp, userId }: { gp: import('@/features/profile/types').GameProfileResponse; userId: string }) {
+  const [showChart, setShowChart] = useState(false);
+  const { data: eloData, isLoading: eloLoading } = useEloHistory(
+    showChart ? userId : '',
+    showChart ? gp.gameId : '',
+  );
+
+  return (
+    <motion.div variants={staggerItem}>
+      <Card className="group hover:border-primary/30 transition-colors">
+        <div className="flex items-center gap-3">
+          {gp.gameImageUrl ? (
+            <img src={gp.gameImageUrl} alt={gp.gameName} className="w-12 h-12 rounded object-cover" />
+          ) : (
+            <div className="w-12 h-12 rounded bg-border flex items-center justify-center text-foreground-muted">🎮</div>
+          )}
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-foreground truncate">{gp.gameName}</h3>
+            {gp.inGameName && <p className="text-sm text-foreground-muted">IGN: {gp.inGameName}</p>}
+          </div>
+          {gp.lookingForTeam && <Badge variant="accent">LFT</Badge>}
+        </div>
+
+        <div className="mt-3 flex items-center gap-3">
+          <RankBadge tier={gp.rankTier} eloPoints={gp.eloPoints} />
+          <button
+            onClick={() => setShowChart(prev => !prev)}
+            className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors underline underline-offset-2"
+          >
+            {showChart ? 'Hide Chart' : 'Show Elo History'}
+          </button>
+        </div>
+
+        {showChart && (
+          <div className="mt-3 rounded-lg bg-gray-800/30 p-3 border border-gray-700/30">
+            {eloLoading ? (
+              <div className="flex justify-center py-8"><Spinner size="sm" /></div>
+            ) : eloData?.history && eloData.history.length > 0 ? (
+              <EloChart
+                history={eloData.history}
+                tierColor={tierColors[gp.rankTier] ?? '#6366f1'}
+                height={180}
+              />
+            ) : (
+              <p className="text-center text-sm text-gray-500 py-4">No elo history available</p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge>{gp.experienceLevel}</Badge>
+          <Badge>{gp.region}</Badge>
+          <Badge>{gp.communicationPreference}</Badge>
+          {gp.hoursPlayed != null && <Badge>{gp.hoursPlayed}h</Badge>}
+        </div>
+        {gp.hoursPlayed != null && (
+          <div className="mt-3">
+            <ProgressBar value={Math.min(gp.hoursPlayed, 2000)} max={2000} variant="accent" size="sm" />
+            <p className="mt-1 text-xs text-foreground-subtle">{gp.hoursPlayed} / 2000h milestone</p>
+          </div>
+        )}
+        {gp.note && <p className="mt-2 text-xs text-foreground-muted italic">{gp.note}</p>}
+      </Card>
+    </motion.div>
   );
 }
 

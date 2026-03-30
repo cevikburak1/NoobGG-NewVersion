@@ -7,6 +7,8 @@ import { useBlockedUsers } from '@/features/blocks/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { Button, Badge, Card, AnimatedPage, Spinner, Modal } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
+import { RankBadge } from '@/components/elo/rankBadge';
+import { SessionResultsModal } from '@/components/elo/sessionResultsModal';
 import { ChatPanel } from '@/components/chat';
 import { discoverPlayers } from '@/features/users/api';
 import type { DiscoverPlayerResponse } from '@/features/users/types';
@@ -32,9 +34,8 @@ export default function RoomDetailPage() {
   const inviteToRoom = useInviteToRoom();
   const { addToast } = useToast();
 
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [showCloseModal, setShowCloseModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showSessionResults, setShowSessionResults] = useState<'leave' | 'close' | null>(null);
 
   const isMember = room?.members.some((m) => m.userId === user?.id);
 
@@ -84,20 +85,26 @@ export default function RoomDetailPage() {
 
   const handleLeave = () => {
     leaveRoom.mutate(roomId!, {
-      onSuccess: () => {
-        setShowLeaveModal(false);
-        navigate('/rooms');
-      },
+      onSuccess: () => navigate('/rooms'),
     });
   };
 
   const handleCloseRoom = () => {
     closeRoom.mutate(roomId!, {
-      onSuccess: () => {
-        setShowCloseModal(false);
-        navigate('/rooms');
-      },
+      onSuccess: () => navigate('/rooms'),
     });
+  };
+
+  const handleSessionDone = () => {
+    setShowSessionResults(null);
+    if (showSessionResults === 'leave') handleLeave();
+    else if (showSessionResults === 'close') handleCloseRoom();
+  };
+
+  const handleSessionSkip = () => {
+    setShowSessionResults(null);
+    if (showSessionResults === 'leave') handleLeave();
+    else if (showSessionResults === 'close') handleCloseRoom();
   };
 
   return (
@@ -116,7 +123,7 @@ export default function RoomDetailPage() {
           </Link>
         </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-3">
           {/* Main content */}
           <div className="space-y-6 lg:col-span-2">
             <RoomHeader
@@ -125,8 +132,10 @@ export default function RoomDetailPage() {
               isOwner={isOwner}
               onJoin={handleJoin}
               joinPending={joinRoom.isPending}
-              onLeave={() => setShowLeaveModal(true)}
-              onClose={() => setShowCloseModal(true)}
+              onLeave={() => setShowSessionResults('leave')}
+              onClose={() => setShowSessionResults('close')}
+              averageElo={room.averageElo}
+              averageRankTier={room.averageRankTier}
             />
 
             {isMember ? (
@@ -174,28 +183,6 @@ export default function RoomDetailPage() {
           />
         </div>
 
-        <Modal isOpen={showLeaveModal} onClose={() => setShowLeaveModal(false)} title="Leave Room">
-          <p className="text-sm text-foreground-muted">
-            Are you sure you want to leave this room? You&apos;ll lose access to the chat.
-          </p>
-          <div className="mt-4 flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
-            <Button variant="danger" onClick={handleLeave} isLoading={leaveRoom.isPending}>Leave</Button>
-          </div>
-        </Modal>
-
-        <Modal isOpen={showCloseModal} onClose={() => setShowCloseModal(false)} title="Close Room">
-          <p className="text-sm text-foreground-muted">
-            Are you sure you want to close this room? This will permanently delete the room, all members will be removed, and all chat messages will be lost.
-          </p>
-          <div className="mt-4 flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setShowCloseModal(false)}>Cancel</Button>
-            <Button variant="danger" onClick={handleCloseRoom} isLoading={closeRoom.isPending}>
-              Close Room
-            </Button>
-          </div>
-        </Modal>
-
         {showInviteModal && roomId && (
           <InvitePlayerModal
             roomId={roomId}
@@ -203,6 +190,18 @@ export default function RoomDetailPage() {
             inviteMutation={inviteToRoom}
             onClose={() => setShowInviteModal(false)}
             addToast={addToast}
+          />
+        )}
+
+        {showSessionResults && roomId && (
+          <SessionResultsModal
+            isOpen
+            roomId={roomId}
+            gameName={room.gameName}
+            gameImageUrl={room.gameImageUrl}
+            averageRankTier={room.averageRankTier}
+            onDone={handleSessionDone}
+            onSkip={handleSessionSkip}
           />
         )}
       </div>
@@ -220,6 +219,8 @@ function RoomHeader({
   joinPending,
   onLeave,
   onClose,
+  averageElo,
+  averageRankTier,
 }: {
   room: { title: string; status: string; description: string | null; region: string; language: string; tags: string[]; currentMemberCount: number; maxMembers: number };
   isMember: boolean | undefined;
@@ -228,6 +229,8 @@ function RoomHeader({
   joinPending: boolean;
   onLeave: () => void;
   onClose: () => void;
+  averageElo: number | null | undefined;
+  averageRankTier: string | null | undefined;
 }) {
   const capacityPct = (room.currentMemberCount / room.maxMembers) * 100;
 
@@ -246,12 +249,15 @@ function RoomHeader({
           {room.description && (
             <p className="mt-2 text-sm text-foreground-muted">{room.description}</p>
           )}
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge>{room.region}</Badge>
             <Badge>{room.language}</Badge>
             {room.tags.map((tag) => (
               <Badge key={tag} variant="primary">{tag}</Badge>
             ))}
+            {averageRankTier && (
+              <RankBadge tier={averageRankTier} eloPoints={averageElo ?? undefined} size="sm" />
+            )}
           </div>
         </div>
 
@@ -299,7 +305,7 @@ function RoomSidebar({
   blockedIds,
   onInvite,
 }: {
-  room: { members: { userId: string; username: string; role: string; joinedAt: string }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null; status: string };
+  room: { members: { userId: string; username: string; role: string; joinedAt: string; eloPoints: number | null; rankTier: string | null }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null; status: string; averageElo: number | null; averageRankTier: string | null };
   onlineUsers: { userId: string; username: string }[];
   isMember: boolean | undefined;
   blockedIds: Set<string>;
@@ -383,21 +389,31 @@ function RoomSidebar({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <Link
-                  to={`/profile/${member.userId}`}
-                  className="block truncate text-sm font-medium text-foreground hover:text-primary transition-colors"
-                >
-                  {member.username}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/profile/${member.userId}`}
+                    className="truncate text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  >
+                    {member.username}
+                  </Link>
+                  {member.role === 'Owner' && !blockedIds.has(member.userId) && (
+                    <Badge variant="warning" className="shrink-0">Owner</Badge>
+                  )}
+                  {blockedIds.has(member.userId) && (
+                    <Badge variant="danger" className="shrink-0">Blocked</Badge>
+                  )}
+                </div>
                 <span className="text-[10px] text-foreground-subtle">
                   Joined {new Date(member.joinedAt).toLocaleDateString()}
                 </span>
               </div>
-              {blockedIds.has(member.userId) ? (
-                <Badge variant="danger" className="shrink-0">Blocked</Badge>
-              ) : member.role === 'Owner' ? (
-                <Badge variant="warning" className="shrink-0">Owner</Badge>
-              ) : null}
+              <div className="shrink-0">
+                {member.rankTier ? (
+                  <RankBadge tier={member.rankTier} eloPoints={member.eloPoints ?? undefined} size="sm" />
+                ) : (
+                  <span className="text-[10px] text-foreground-subtle italic">No rank</span>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>
@@ -410,7 +426,13 @@ function RoomSidebar({
           <InfoRow label="Created" value={new Date(room.createdAt).toLocaleDateString()} />
           <InfoRow label="Visibility" value={room.isPublic ? 'Public' : 'Private'} />
           {room.rankRange && (
-            <InfoRow label="Rank" value={`${room.rankRange.min} – ${room.rankRange.max}`} />
+            <InfoRow label="Rank Range" value={`${room.rankRange.min} – ${room.rankRange.max}`} />
+          )}
+          {room.averageRankTier && (
+            <div className="flex items-center justify-between">
+              <span className="text-foreground-subtle">Avg. Rank</span>
+              <RankBadge tier={room.averageRankTier} eloPoints={room.averageElo ?? undefined} size="sm" />
+            </div>
           )}
         </div>
       </Card>

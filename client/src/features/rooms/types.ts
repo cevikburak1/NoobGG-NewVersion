@@ -13,6 +13,8 @@ export interface RoomResponse {
   tags: string[];
   status: string;
   createdAt: string;
+  averageElo: number | null;
+  averageRankTier: string | null;
 }
 
 export interface RoomMemberResponse {
@@ -21,6 +23,8 @@ export interface RoomMemberResponse {
   avatarUrl: string | null;
   role: string;
   joinedAt: string;
+  eloPoints: number | null;
+  rankTier: string | null;
 }
 
 export interface RoomDetailResponse extends RoomResponse {
@@ -30,6 +34,8 @@ export interface RoomDetailResponse extends RoomResponse {
   rankRange: { min: string; max: string } | null;
   voiceChannelId: string | null;
   members: RoomMemberResponse[];
+  averageElo: number | null;
+  averageRankTier: string | null;
 }
 
 export interface CreateRoomRequest {

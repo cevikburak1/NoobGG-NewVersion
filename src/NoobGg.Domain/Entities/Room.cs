@@ -19,4 +19,6 @@ public class Room : BaseEntity
     public RoomStatus Status { get; set; } = RoomStatus.Open;
     public DateTime? ClosedAt { get; set; }
     public string? VoiceChannelId { get; set; }
+    public int? AverageElo { get; set; }
+    public string? AverageRankTier { get; set; }
 }

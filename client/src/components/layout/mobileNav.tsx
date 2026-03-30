@@ -3,8 +3,9 @@ import { cn } from '@/lib/cn';
 
 const tabs = [
   { to: '/rooms', label: 'Rooms' },
+  { to: '/guilds', label: 'Guilds' },
   { to: '/discover', label: 'Discover' },
-  { to: '/notifications', label: 'Alerts' },
+  { to: '/leaderboard', label: 'Ranks' },
   { to: '/settings', label: 'Settings' },
 ];
 

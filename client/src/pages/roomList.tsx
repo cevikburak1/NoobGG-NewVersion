@@ -4,16 +4,19 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRooms, useCreateRoom } from '@/features/rooms/hooks';
+import { useRecommendedRooms } from '@/features/recommendations/hooks';
 import { createRoomSchema, type CreateRoomFormData } from '@/features/rooms/schemas';
 import { useGameSearch } from '@/features/games/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuthStore } from '@/stores/authStore';
 import type { RoomFilters } from '@/types/api';
 import type { RoomResponse } from '@/features/rooms/types';
+import type { RecommendedRoomResponse } from '@/features/recommendations/types';
 import {
   Button, Input, Select, Textarea, Modal, Badge,
   AnimatedPage, Spinner, staggerContainer, staggerItem,
 } from '@/components/ui';
+import { RankBadge } from '@/components/elo/rankBadge';
 
 const regionOptions = [
   { value: '', label: 'All Regions' },
@@ -55,6 +58,10 @@ export default function RoomListPage() {
   const { data: filterGames } = useGameSearch(debouncedGameFilter);
 
   const { data, isLoading } = useRooms(filters);
+  const { data: recommendedRooms } = useRecommendedRooms(6);
+
+  const hasFilters = !!(filters.gameId || filters.region || filters.language || filters.status);
+  const showRecommendations = isAuth && !hasFilters && (filters.page ?? 1) === 1;
 
   const clearGameFilter = () => {
     setFilters((f) => ({ ...f, gameId: undefined, page: 1 }));
@@ -186,6 +193,29 @@ export default function RoomListPage() {
           </div>
         </motion.div>
 
+        {/* Recommended Rooms */}
+        {showRecommendations && recommendedRooms && recommendedRooms.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">✨</span>
+                <h2 className="text-sm font-semibold text-foreground">Recommended for you</h2>
+              </div>
+              <span className="text-xs text-foreground-subtle">Based on your game profiles</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {recommendedRooms.map((room) => (
+                <RecommendedRoomCard key={room.id} room={room} />
+              ))}
+            </div>
+            <div className="h-px bg-border/50" />
+          </motion.div>
+        )}
+
         {/* Room Grid */}
         {isLoading ? (
           <div className="flex justify-center py-20">
@@ -266,6 +296,59 @@ export default function RoomListPage() {
   );
 }
 
+function RecommendedRoomCard({ room }: { room: RecommendedRoomResponse }) {
+  const capacityPercent = room.maxMembers > 0 ? (room.currentMemberCount / room.maxMembers) * 100 : 0;
+
+  return (
+    <Link to={`/rooms/${room.id}`}>
+      <motion.div
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.2 }}
+        className="group flex gap-3.5 rounded-xl border border-primary/15 bg-primary/3 p-3.5 transition-colors hover:border-primary/30 hover:bg-primary/6"
+      >
+        {room.gameImageUrl ? (
+          <img
+            src={room.gameImageUrl}
+            alt={room.gameName ?? ''}
+            className="h-14 w-20 shrink-0 rounded-lg object-cover"
+          />
+        ) : (
+          <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-lg bg-surface-hover text-lg">
+            🎮
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {room.title}
+            </h3>
+            <Badge
+              variant={room.status === 'Open' ? 'success' : room.status === 'Full' ? 'warning' : 'default'}
+              className="shrink-0 text-[10px]"
+            >
+              {room.status}
+            </Badge>
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">
+            <span>{room.region}</span>
+            <span className="text-foreground-subtle">·</span>
+            <span>{room.currentMemberCount}/{room.maxMembers}</span>
+            {capacityPercent < 80 && <span className="text-success">spots open</span>}
+          </div>
+          {room.matchReasons.length > 0 && (
+            <p className="mt-1.5 truncate text-[11px] text-primary/80">
+              {room.matchReasons.slice(0, 2).join(' · ')}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-start pt-0.5 text-xs font-bold text-primary/60">
+          {room.score}
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
 function RoomCard({ room }: { room: RoomResponse }) {
   const capacityPercent = (room.currentMemberCount / room.maxMembers) * 100;
   const isFull = capacityPercent >= 100;
@@ -315,12 +398,15 @@ function RoomCard({ room }: { room: RoomResponse }) {
               {room.title}
             </h3>
 
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               <Badge>{room.region}</Badge>
               <Badge>{room.language}</Badge>
               {room.tags.slice(0, 2).map((tag) => (
                 <Badge key={tag} variant="primary">{tag}</Badge>
               ))}
+              {room.averageRankTier && (
+                <RankBadge tier={room.averageRankTier} eloPoints={room.averageElo ?? undefined} size="sm" />
+              )}
             </div>
 
             <div className="mt-3">

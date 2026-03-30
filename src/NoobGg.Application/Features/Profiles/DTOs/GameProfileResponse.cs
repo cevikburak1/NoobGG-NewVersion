@@ -16,4 +16,6 @@ public record GameProfileResponse
     public bool LookingForTeam { get; init; }
     public string? Note { get; init; }
     public string? InGameName { get; init; }
+    public int EloPoints { get; init; }
+    public string RankTier { get; init; } = string.Empty;
 }

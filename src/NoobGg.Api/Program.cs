@@ -55,6 +55,9 @@ builder.Services.AddControllers()
 builder.Services.AddHostedService<DatabaseMigrationRunner>();
 builder.Services.AddHostedService<MongoIndexInitializer>();
 builder.Services.AddHostedService<PlanSeedInitializer>();
+builder.Services.AddHostedService<FakeDataSeeder>();
+builder.Services.AddHostedService<EloDataSeeder>();
+builder.Services.AddHostedService<RoomMemberProfileSeeder>();
 builder.Services.AddHostedService<GameCatalogSyncJob>();
 
 var app = builder.Build();

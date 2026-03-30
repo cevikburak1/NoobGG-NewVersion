@@ -67,7 +67,9 @@ public class UpdateGameProfileCommandHandler : IRequestHandler<UpdateGameProfile
             CommunicationPreference = updated.CommunicationPreference.ToString(),
             HoursPlayed = updated.HoursPlayed,
             LookingForTeam = updated.LookingForTeam,
-            Note = updated.Note
+            Note = updated.Note,
+            EloPoints = updated.EloPoints,
+            RankTier = updated.RankTier.ToString()
         });
     }
 }

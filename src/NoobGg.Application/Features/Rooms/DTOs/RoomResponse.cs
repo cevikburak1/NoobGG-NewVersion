@@ -14,4 +14,6 @@ public record RoomResponse(
     string Language,
     List<string> Tags,
     string Status,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int? AverageElo,
+    string? AverageRankTier);
