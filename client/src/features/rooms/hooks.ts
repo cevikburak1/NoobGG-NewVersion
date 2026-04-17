@@ -25,6 +25,7 @@ export function useCreateRoom() {
     mutationFn: roomsApi.createRoom,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }
@@ -36,6 +37,7 @@ export function useJoinRoom() {
     onSuccess: (_, roomId) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.detail(roomId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }
@@ -46,6 +48,7 @@ export function useLeaveRoom() {
     mutationFn: roomsApi.leaveRoom,
     onSuccess: (_, roomId) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.detail(roomId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }
@@ -56,6 +59,7 @@ export function useCloseRoom() {
     mutationFn: roomsApi.closeRoom,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }
@@ -82,6 +86,7 @@ export function useAcceptInvite() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.invites() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.rooms.all() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }

@@ -14,12 +14,18 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
     private readonly IMongoContext _mongoContext;
     private readonly ICurrentUser _currentUser;
     private readonly IPresenceTracker _presenceTracker;
+    private readonly IRecentActivityService _recentActivityService;
 
-    public GetProfileQueryHandler(IMongoContext mongoContext, ICurrentUser currentUser, IPresenceTracker presenceTracker)
+    public GetProfileQueryHandler(
+        IMongoContext mongoContext,
+        ICurrentUser currentUser,
+        IPresenceTracker presenceTracker,
+        IRecentActivityService recentActivityService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
         _presenceTracker = presenceTracker;
+        _recentActivityService = recentActivityService;
     }
 
     public async Task<Result<ProfileDetailResponse>> Handle(GetProfileQuery request, CancellationToken ct)
@@ -175,6 +181,15 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
             isFavorited = await favorites.Find(f =>
                 f.UserId == _currentUser.UserId && f.FavoriteUserId == request.UserId
             ).AnyAsync(ct);
+        }
+
+        if (!isOwnProfile && _currentUser.IsAuthenticated && _currentUser.UserId is not null)
+        {
+            _ = _recentActivityService.UpsertAsync(
+                _currentUser.UserId,
+                request.UserId,
+                RecentActivityTargetType.Player,
+                ct);
         }
 
         return Result<ProfileDetailResponse>.Success(new ProfileDetailResponse

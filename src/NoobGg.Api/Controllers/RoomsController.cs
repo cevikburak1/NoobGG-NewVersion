@@ -30,6 +30,7 @@ public class RoomsController : ApiControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetRooms(
         [FromQuery] string? gameId,
+        [FromQuery] string? creatorId,
         [FromQuery] Region? region,
         [FromQuery] Language? language,
         [FromQuery] string? tag,
@@ -40,6 +41,7 @@ public class RoomsController : ApiControllerBase
         var query = new GetRoomsQuery
         {
             GameId = gameId,
+            CreatorId = creatorId,
             Region = region,
             Language = language,
             Tag = tag,

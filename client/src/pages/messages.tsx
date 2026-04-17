@@ -6,8 +6,9 @@ import { useDm } from '@/providers/dmProvider';
 import { useAuthStore } from '@/stores/authStore';
 import { usePresence } from '@/features/users/usePresence';
 import { useToast } from '@/components/ui/toast';
-import { Button, Input, Spinner, AnimatedPage, Badge } from '@/components/ui';
+import { Button, Input, Spinner, AnimatedPage } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
+import { RecentMessagedMini } from '@/components/activity/recentActivitySurfaces';
 import type { ConversationResponse } from '@/features/dm/types';
 
 export default function MessagesPage() {
@@ -114,6 +115,8 @@ export default function MessagesPage() {
               <span className="text-[11px] text-foreground-subtle capitalize">{dmStatus}</span>
             </div>
           </div>
+
+          <RecentMessagedMini />
 
           <div className="flex-1 overflow-y-auto">
             {convsLoading ? (

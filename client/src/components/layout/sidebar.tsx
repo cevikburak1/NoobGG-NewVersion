@@ -2,13 +2,18 @@ import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useConversations } from '@/features/dm/hooks';
 import { usePendingRequests } from '@/features/friends/hooks';
+import { useNotificationContext } from '@/providers/notificationProvider';
 import { cn } from '@/lib/cn';
 
 const navItems = [
   { to: '/rooms', label: 'Rooms', icon: RoomsIcon },
   { to: '/guilds', label: 'Guilds', icon: GuildsIcon },
   { to: '/discover', label: 'Discover', icon: DiscoverIcon },
+  { to: '/community', label: 'Forum', icon: ForumIcon },
+  { to: '/compare', label: 'Compare', icon: CompareIcon },
   { to: '/leaderboard', label: 'Leaderboard', icon: LeaderboardIcon },
+  { to: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
+  { to: '/notifications', label: 'Notifications', icon: NotificationsIcon, showNotificationBadge: true },
   { to: '/friends', label: 'Friends', icon: FriendsIcon, showFriendBadge: true },
   { to: '/favorites', label: 'Favorites', icon: FavoritesIcon },
   { to: '/messages', label: 'Messages', icon: MessagesIcon, showBadge: true },
@@ -25,6 +30,7 @@ export function Sidebar() {
   const isAuth = useAuthStore((s) => s.isAuthenticated());
   const isMod = role === 'Moderator' || role === 'Admin';
 
+  const { unreadCount: notificationUnread } = useNotificationContext();
   const { data: conversations } = useConversations();
   const totalUnread = conversations?.reduce((sum, c) => sum + c.unreadCount, 0) ?? 0;
 
@@ -39,6 +45,7 @@ export function Sidebar() {
           let badgeCount = 0;
           if (item.showBadge && isAuth) badgeCount = totalUnread;
           if (item.showFriendBadge && isAuth) badgeCount = pendingIncoming;
+          if (item.showNotificationBadge && isAuth) badgeCount = notificationUnread;
           return (
             <SidebarLink
               key={item.to}
@@ -132,6 +139,27 @@ function DiscoverIcon() {
   );
 }
 
+function CompareIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 6A2.25 2.25 0 016 3.75h3.75A2.25 2.25 0 0112 6v3.75m-8.25 3A2.25 2.25 0 006 15h3.75A2.25 2.25 0 0012 12.75V9m8.25-3A2.25 2.25 0 0118 3.75h-3.75A2.25 2.25 0 0012 6v3.75m8.25 6A2.25 2.25 0 0118 20.25h-3.75A2.25 2.25 0 0012 18v-3.75M3.75 15A2.25 2.25 0 006 17.25h3.75A2.25 2.25 0 0012 15v-3.75"
+      />
+    </svg>
+  );
+}
+
+function ForumIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A8.25 8.25 0 0110.5 3.75h3A8.25 8.25 0 0121.75 12v.75A8.25 8.25 0 0113.5 21h-3a8.25 8.25 0 01-8.25-8.25z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 9.75h9m-9 4.5h5.25" />
+    </svg>
+  );
+}
+
 function FriendsIcon() {
   return (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -177,6 +205,26 @@ function LeaderboardIcon() {
   return (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-4.5A3.375 3.375 0 0012.75 10.5h-1.5A3.375 3.375 0 007.5 14.25v4.5m9 0H7.5m4.5-12V3.375c0-.621-.504-1.125-1.125-1.125h-.75C9.504 2.25 9 2.754 9 3.375V6.75" />
+    </svg>
+  );
+}
+
+function NotificationsIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+      />
+    </svg>
+  );
+}
+
+function TournamentIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.504-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M18.75 4.236c.982.143 1.954.317 2.916.52A6.003 6.003 0 0116.27 9.728M18.75 4.236V4.5c0 2.108-.966 3.99-2.48 5.228m0 0a6.04 6.04 0 01-2.02 1.074M12 21.75v-3" />
     </svg>
   );
 }

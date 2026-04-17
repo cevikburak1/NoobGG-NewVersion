@@ -34,8 +34,13 @@ export function useReviewReport() {
       id: string;
       data: ReviewReportRequest;
     }) => reviewReport(id, data),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['moderation', 'reports'] });
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['moderation', 'reports'] }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.moderation.reportDetail(variables.id),
+        }),
+      ]);
     },
   });
 }

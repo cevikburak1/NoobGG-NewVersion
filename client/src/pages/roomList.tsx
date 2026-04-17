@@ -1,22 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRooms, useCreateRoom } from '@/features/rooms/hooks';
 import { useRecommendedRooms } from '@/features/recommendations/hooks';
 import { createRoomSchema, type CreateRoomFormData } from '@/features/rooms/schemas';
-import { useGameSearch } from '@/features/games/hooks';
+import { useGameSearch, useGameBrowse } from '@/features/games/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuthStore } from '@/stores/authStore';
 import type { RoomFilters } from '@/types/api';
 import type { RoomResponse } from '@/features/rooms/types';
 import type { RecommendedRoomResponse } from '@/features/recommendations/types';
+import type { JoinMatchQueueRequest } from '@/features/matchmaking/types';
 import {
   Button, Input, Select, Textarea, Modal, Badge,
   AnimatedPage, Spinner, staggerContainer, staggerItem,
 } from '@/components/ui';
 import { RankBadge } from '@/components/elo/rankBadge';
+import { RecentJoinedRoomsMini } from '@/components/activity/recentActivitySurfaces';
+import { useToast } from '@/components/ui/toast';
+import { useJoinMatchQueue, useLeaveMatchQueue, useMatchQueueStatus } from '@/features/matchmaking/hooks';
+import { queryKeys } from '@/lib/queryKeys';
+
+interface AvailableGame {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+}
 
 const regionOptions = [
   { value: '', label: 'All Regions' },
@@ -44,6 +57,28 @@ const statusColors: Record<string, 'success' | 'warning' | 'primary' | 'danger' 
   InProgress: 'primary',
   Closed: 'danger',
 };
+
+function quickMatchErrorMessage(e: unknown): string {
+  if (!axios.isAxiosError(e)) return 'Beklenmeyen bir hata oluştu.';
+  const data = e.response?.data as { title?: string } | undefined;
+  const title = data?.title?.trim();
+  if (title) {
+    if (/game not found or inactive/i.test(title)) {
+      return 'Bu oyun sistemde bulunamadı veya pasif. Farklı bir oyun seç veya oyun profilini güncelle.';
+    }
+    return title;
+  }
+  const status = e.response?.status;
+  if (status === 404) {
+    const devHint =
+      import.meta.env.DEV && import.meta.env.VITE_API_URL
+        ? ' Geliştirmede client/.env içindeki VITE_API_URL, API ile aynı host/port olmalı (NoobGg.Api varsayılanı: http://localhost:5071).'
+        : '';
+    return `Sunucu bu adresi tanımıyor (404).${devHint} Oyun seçimini ve API adresini kontrol et.`;
+  }
+  if (status === 401) return 'Oturum süresi dolmuş olabilir; tekrar giriş yap.';
+  return e.message || 'İstek başarısız oldu.';
+}
 
 export default function RoomListPage() {
   const navigate = useNavigate();
@@ -94,6 +129,18 @@ export default function RoomListPage() {
             </Button>
           </motion.div>
         </div>
+
+        {isAuth ? <RecentJoinedRoomsMini /> : null}
+
+        {isAuth ? (
+          <QuickMatchSection
+            filterGameId={filters.gameId}
+            filterGameName={gameFilterName}
+            filterRegion={filters.region}
+            filterLanguage={filters.language}
+            recommendedRooms={recommendedRooms}
+          />
+        ) : null}
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -293,6 +340,218 @@ export default function RoomListPage() {
         />
       </div>
     </AnimatedPage>
+  );
+}
+
+function QuickMatchSection({
+  filterGameId,
+  filterGameName,
+  filterRegion,
+  filterLanguage,
+  recommendedRooms,
+}: {
+  filterGameId?: string;
+  filterGameName: string;
+  filterRegion?: string;
+  filterLanguage?: string;
+  recommendedRooms: RecommendedRoomResponse[] | undefined;
+}) {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { addToast } = useToast();
+  const matchedNavRef = useRef(false);
+  const { data: queueStatus } = useMatchQueueStatus(true);
+  const joinMut = useJoinMatchQueue();
+  const leaveMut = useLeaveMatchQueue();
+
+  // Fetch all multiplayer games for the picker
+  const { data: gamesData } = useGameBrowse({ multiplayer: true, pageSize: 100 });
+  const gamesItems = gamesData?.items;
+  const allGames = useMemo<AvailableGame[]>(() => {
+    if (!gamesItems) return [];
+    return gamesItems.map((g) => ({
+      id: g.id,
+      name: g.name,
+      imageUrl: g.backgroundImageUrl,
+    }));
+  }, [gamesItems]);
+
+  // Local selection from the chip picker; top-level filter takes precedence when present.
+  const [localGame, setLocalGame] = useState<AvailableGame | null>(null);
+
+  // Soft hint shown when the backend reports no joinable room for the picked game (never a toast).
+  const [noRoomsHint, setNoRoomsHint] = useState(false);
+
+  // Any queue activity or new selection clears the stale "no rooms" hint.
+  useEffect(() => {
+    if (queueStatus?.status === 'Searching' || queueStatus?.status === 'Matched') {
+      setNoRoomsHint(false);
+    }
+  }, [queueStatus?.status]);
+
+  const activeGameId = filterGameId ?? localGame?.id;
+  const activeGameName = filterGameId ? (filterGameName || 'Seçili') : (localGame?.name ?? '');
+
+  const inQueue =
+    queueStatus?.status === 'Searching' || queueStatus?.status === 'FallbackSuggested';
+  const fallback =
+    queueStatus?.fallbackReady === true || queueStatus?.status === 'FallbackSuggested';
+
+  useEffect(() => {
+    if (matchedNavRef.current) return;
+    if (queueStatus?.status === 'Matched' && queueStatus.matchedRoomId) {
+      matchedNavRef.current = true;
+      void qc.invalidateQueries({ queryKey: queryKeys.rooms.all() });
+      navigate(`/rooms/${queueStatus.matchedRoomId}`);
+    }
+  }, [queueStatus?.status, queueStatus?.matchedRoomId, navigate, qc]);
+
+  const fallbackRooms =
+    activeGameId && recommendedRooms
+      ? recommendedRooms.filter((r) => r.gameId === activeGameId).slice(0, 6)
+      : [];
+
+  const onJoin = async () => {
+    matchedNavRef.current = false;
+    setNoRoomsHint(false);
+    if (!activeGameId) {
+      setNoRoomsHint(true);
+      return;
+    }
+    const payload: JoinMatchQueueRequest = { gameId: activeGameId };
+    if (filterRegion) payload.region = filterRegion;
+    if (filterLanguage) payload.language = filterLanguage;
+    try {
+      const res = await joinMut.mutateAsync(payload);
+      if (res.status === 'Matched' && res.matchedRoomId) {
+        navigate(`/rooms/${res.matchedRoomId}`);
+        return;
+      }
+      if (res.status === 'NoRoomsAvailable') {
+        setNoRoomsHint(true);
+        return;
+      }
+    } catch (e: unknown) {
+      const message = quickMatchErrorMessage(e);
+      addToast({ type: 'error', title: 'Hemen eşleştir', message });
+    }
+  };
+
+  const onCancel = async () => {
+    try {
+      await leaveMut.mutateAsync();
+      matchedNavRef.current = false;
+    } catch {
+      addToast({ type: 'error', title: 'Quick match', message: 'Could not leave queue' });
+    }
+  };
+
+  // Description shown under the title; adapts to whether a game is chosen and whether filter overrides apply.
+  const overrideHint = filterRegion || filterLanguage
+    ? ` · Filtrelerin uygulanacak${filterRegion ? ` · ${filterRegion}` : ''}${filterLanguage ? ` · ${filterLanguage}` : ''}`
+    : '';
+
+  const description = activeGameId
+    ? `Oyun: ${activeGameName}. Uygun açık oda varsa direkt katılırsın; yoksa kuyruğa girersin (~45 sn sonra oda önerileri gösterilir).${overrideHint}`
+    : allGames.length > 0
+      ? 'Aşağıdaki listeden bir oyun seç — uygun oda varsa direkt katılırsın, yoksa kuyruğa girersin.'
+      : 'Şu an listelenecek oyun yok. Üstteki filtreden bir oyun ara veya önce bir oda oluştur.';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-xl border border-accent/25 bg-linear-to-r from-accent/8 via-surface/90 to-primary/8 p-4"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold tracking-wide text-foreground">Hemen eşleştir</h2>
+          <p className="mt-1 text-xs text-foreground-muted">{description}</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {inQueue ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void onCancel()}
+              disabled={leaveMut.isPending}
+            >
+              Kuyruktan çık
+            </Button>
+          ) : null}
+          <Button
+            size="sm"
+            onClick={() => void onJoin()}
+            disabled={joinMut.isPending || !activeGameId || inQueue}
+          >
+            {joinMut.isPending ? 'Başlatılıyor…' : 'Hemen eşleştir'}
+          </Button>
+        </div>
+      </div>
+
+      {!filterGameId && allGames.length > 0 ? (
+        <div className="mt-3 flex max-h-32 flex-wrap gap-2 overflow-y-auto pr-1">
+          {allGames.map((g) => {
+            const isActive = localGame?.id === g.id;
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => {
+                  setLocalGame(isActive ? null : g);
+                  setNoRoomsHint(false);
+                }}
+                className={`flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  isActive
+                    ? 'border-primary bg-primary/15 text-primary'
+                    : 'border-border/70 bg-surface/70 text-foreground-muted hover:border-primary/40 hover:text-foreground'
+                }`}
+              >
+                {g.imageUrl ? (
+                  <img src={g.imageUrl} alt="" className="h-4 w-6 shrink-0 rounded object-cover" />
+                ) : (
+                  <span className="text-[10px]">🎮</span>
+                )}
+                <span className="max-w-40 truncate">{g.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {noRoomsHint && !inQueue ? (
+        <p className="mt-3 text-xs text-warning/90">
+          {!activeGameId
+            ? 'Eşleştirmeden önce bir oyun seç.'
+            : 'Bu oyun için şu an uygun açık oda yok. Yeni bir oda oluşturabilir ya da başka bir oyun deneyebilirsin.'}
+        </p>
+      ) : null}
+
+      {inQueue ? (
+        <p className="mt-3 text-xs text-foreground-muted">
+          {queueStatus?.secondsInQueue != null
+            ? `Kuyrukta · ${queueStatus.secondsInQueue}s`
+            : 'Kuyrukta…'}
+          {fallback ? ' · Aşağıdaki önerilen odalara da göz atabilirsin.' : null}
+        </p>
+      ) : null}
+      {fallback && activeGameId && fallbackRooms.length > 0 ? (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs font-medium text-foreground-subtle">Bu oyun için önerilen odalar</p>
+          <div className="flex flex-wrap gap-2">
+            {fallbackRooms.map((room) => (
+              <Link
+                key={room.id}
+                to={`/rooms/${room.id}`}
+                className="rounded-lg border border-border/70 bg-surface/80 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {room.title}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </motion.div>
   );
 }
 

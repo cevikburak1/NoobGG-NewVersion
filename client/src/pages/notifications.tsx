@@ -1,18 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications, useMarkRead, useMarkAllRead } from '@/features/notifications/hooks';
 import { useAcceptInvite, useDeclineInvite } from '@/features/rooms/hooks';
-import { Button, Badge } from '@/components/ui';
+import { Button } from '@/components/ui';
 import type { NotificationResponse, NotificationType } from '@/features/notifications/types';
 import { useToast } from '@/components/ui/toast';
+import { RecentActivityHub } from '@/components/activity/recentActivitySurfaces';
 
 const FILTER_OPTIONS = [
   { label: 'All', value: undefined },
   { label: 'Unread', value: true },
 ] as const;
 
-const TYPE_META: Record<NotificationType, { icon: JSX.Element; color: string }> = {
+const TYPE_META: Partial<Record<NotificationType, { icon: ReactNode; color: string }>> = {
   FriendRequest: { icon: <PersonAddIcon />, color: 'text-blue-400' },
   FriendAccepted: { icon: <HandshakeIcon />, color: 'text-green-400' },
   RoomInvite: { icon: <DoorIcon />, color: 'text-purple-400' },
@@ -23,6 +24,14 @@ const TYPE_META: Record<NotificationType, { icon: JSX.Element; color: string }> 
   ReportResolved: { icon: <ShieldCheckIcon />, color: 'text-emerald-400' },
   SubscriptionChanged: { icon: <StarIcon />, color: 'text-yellow-400' },
   SystemMessage: { icon: <MegaphoneIcon />, color: 'text-foreground-muted' },
+  GuildInvite: { icon: <DoorIcon />, color: 'text-purple-400' },
+  GuildJoined: { icon: <CheckCircleIcon />, color: 'text-green-400' },
+  GuildLeft: { icon: <ExitIcon />, color: 'text-amber-400' },
+  GuildJoinRequestReceived: { icon: <PersonAddIcon />, color: 'text-blue-400' },
+  GuildJoinRequestApproved: { icon: <CheckCircleIcon />, color: 'text-green-400' },
+  GuildJoinRequestRejected: { icon: <LockIcon />, color: 'text-red-400' },
+  CommunityTopicCommented: { icon: <ChatIcon />, color: 'text-accent' },
+  CommunityMentioned: { icon: <MegaphoneIcon />, color: 'text-primary-hover' },
 };
 
 export default function NotificationsPage() {
@@ -30,7 +39,7 @@ export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data, isLoading, isError } = useNotifications({ unreadOnly, page, pageSize });
+  const { data, isLoading, isError, isFetching } = useNotifications({ unreadOnly, page, pageSize });
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
   const acceptInvite = useAcceptInvite();
@@ -50,113 +59,324 @@ export default function NotificationsPage() {
     setPage(1);
   };
 
+  const totalPages =
+    data && data.totalCount > 0 ? Math.max(1, Math.ceil(data.totalCount / pageSize)) : 1;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [page, unreadOnly]);
+
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
-          <p className="mt-1 text-sm text-foreground-muted">
-            Stay updated on activity across NoobGg
+    <div className="relative mx-auto max-w-3xl px-1 sm:px-0">
+      <div
+        className="pointer-events-none absolute -inset-x-12 -top-8 bottom-0 -z-10 opacity-90 sm:-inset-x-24"
+        aria-hidden
+      >
+        <div className="absolute left-1/4 top-0 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
+        <div className="absolute right-1/4 top-24 h-40 w-56 rounded-full bg-accent/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(124,58,237,0.12),transparent_55%)]" />
+      </div>
+
+      <div
+        className="relative space-y-6"
+        style={{ fontFamily: "'Plus Jakarta Sans', var(--font-sans)" }}
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent/90">
+              Inbox
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              Notifications
+            </h1>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-foreground-muted">
+              DMs, invites, and squad activity — paginate through your history without losing context.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-border/80 bg-surface/50 text-foreground backdrop-blur-sm hover:bg-surface-hover"
+            onClick={handleMarkAllRead}
+            disabled={markAllRead.isPending || !data?.items.some((n) => !n.isRead)}
+          >
+            Mark all read
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {FILTER_OPTIONS.map((opt) => (
+            <motion.button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => handleFilterChange(opt.value)}
+              whileTap={{ scale: 0.98 }}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                unreadOnly === opt.value
+                  ? 'bg-linear-to-br from-primary to-primary-hover text-primary-foreground shadow-[0_0_24px_-4px_rgba(124,58,237,0.45)]'
+                  : 'border border-border/60 bg-surface/60 text-foreground-muted backdrop-blur-sm hover:border-border-hover hover:text-foreground'
+              }`}
+            >
+              {opt.label}
+            </motion.button>
+          ))}
+        </div>
+
+        <RecentActivityHub />
+
+        {isLoading && <LoadingSkeleton />}
+
+        {isError && (
+          <div className="rounded-2xl border border-danger/25 bg-danger/5 p-8 text-center backdrop-blur-sm">
+            <p className="text-danger">Failed to load notifications. Please try again.</p>
+          </div>
+        )}
+
+        {!isLoading && !isError && data && data.items.length === 0 && (
+          <EmptyState unreadOnly={unreadOnly} />
+        )}
+
+        {!isLoading && !isError && data && data.items.length > 0 && (
+          <>
+            <motion.div
+              animate={{ opacity: isFetching ? 0.72 : 1 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-2"
+            >
+              <AnimatePresence mode="popLayout">
+                {data.items.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onMarkRead={handleMarkRead}
+                    isPending={markRead.isPending}
+                    onAcceptInvite={async (inviteId) => {
+                      try {
+                        await acceptInvite.mutateAsync(inviteId);
+                        handleMarkRead(notification.id);
+                        addToast({ title: 'Invite accepted!', type: 'success' });
+                      } catch {
+                        addToast({ title: 'Could not accept invite', type: 'error' });
+                      }
+                    }}
+                    onDeclineInvite={async (inviteId) => {
+                      try {
+                        await declineInvite.mutateAsync(inviteId);
+                        handleMarkRead(notification.id);
+                        addToast({ title: 'Invite declined', type: 'info' });
+                      } catch {
+                        addToast({ title: 'Could not decline invite', type: 'error' });
+                      }
+                    }}
+                    inviteActionPending={acceptInvite.isPending || declineInvite.isPending}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
+
+            {data.totalCount > 0 && (
+              <NotificationPagination
+                page={data.page}
+                pageSize={pageSize}
+                totalCount={data.totalCount}
+                totalPages={totalPages}
+                isBusy={isFetching}
+                onPageChange={setPage}
+              />
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getVisiblePages(current: number, total: number): (number | 'gap')[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const set = new Set<number>([1, total, current, current - 1, current + 1]);
+  const sorted = [...set].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+  const out: (number | 'gap')[] = [];
+  let prev = 0;
+  for (const p of sorted) {
+    if (prev && p - prev > 1) out.push('gap');
+    out.push(p);
+    prev = p;
+  }
+  return out;
+}
+
+function NotificationPagination({
+  page,
+  pageSize,
+  totalCount,
+  totalPages,
+  isBusy,
+  onPageChange,
+}: {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  isBusy: boolean;
+  onPageChange: (p: number) => void;
+}) {
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+  const visible = getVisiblePages(page, totalPages);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="overflow-hidden rounded-2xl border border-border/50 bg-surface/70 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.45)] backdrop-blur-md"
+    >
+      <div className="h-1 w-full bg-border/30">
+        <motion.div
+          className="h-full w-full origin-left rounded-full bg-linear-to-r from-primary via-primary-hover to-accent"
+          initial={false}
+          animate={{ scaleX: page / totalPages }}
+          transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+          style={{ transformOrigin: '0% 50%' }}
+        />
+      </div>
+      <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-foreground-muted">
+            Showing{' '}
+            <span className="tabular-nums text-foreground">
+              {rangeStart}–{rangeEnd}
+            </span>{' '}
+            of{' '}
+            <span className="tabular-nums text-foreground">{totalCount}</span>
+          </p>
+          <p className="mt-0.5 text-[11px] text-foreground-subtle">
+            Page {page} / {totalPages}
+            {isBusy ? ' · Loading…' : ''}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleMarkAllRead}
-          disabled={markAllRead.isPending || !data?.items.some((n) => !n.isRead)}
-        >
-          Mark all read
-        </Button>
-      </div>
 
-      <div className="flex gap-2">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={String(opt.value)}
-            onClick={() => handleFilterChange(opt.value)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-              unreadOnly === opt.value
-                ? 'bg-primary text-white'
-                : 'bg-surface-hover text-foreground-muted hover:text-foreground'
-            }`}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+          <PaginationIconButton
+            label="First page"
+            disabled={!hasPrev || isBusy}
+            onClick={() => onPageChange(1)}
           >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+            <ChevronDoubleLeftIcon />
+          </PaginationIconButton>
+          <PaginationIconButton
+            label="Previous page"
+            disabled={!hasPrev || isBusy}
+            onClick={() => onPageChange(page - 1)}
+          >
+            <ChevronLeftIcon />
+          </PaginationIconButton>
 
-      {isLoading && <LoadingSkeleton />}
-
-      {isError && (
-        <div className="rounded-xl border border-danger/20 bg-danger/5 p-8 text-center">
-          <p className="text-danger">Failed to load notifications. Please try again.</p>
-        </div>
-      )}
-
-      {!isLoading && !isError && data && data.items.length === 0 && (
-        <EmptyState unreadOnly={unreadOnly} />
-      )}
-
-      {!isLoading && !isError && data && data.items.length > 0 && (
-        <>
-          <div className="space-y-2">
-            <AnimatePresence mode="popLayout">
-              {data.items.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onMarkRead={handleMarkRead}
-                  isPending={markRead.isPending}
-                  onAcceptInvite={async (inviteId) => {
-                    try {
-                      await acceptInvite.mutateAsync(inviteId);
-                      handleMarkRead(notification.id);
-                      addToast({ title: 'Invite accepted!', type: 'success' });
-                    } catch {
-                      addToast({ title: 'Could not accept invite', type: 'error' });
-                    }
-                  }}
-                  onDeclineInvite={async (inviteId) => {
-                    try {
-                      await declineInvite.mutateAsync(inviteId);
-                      handleMarkRead(notification.id);
-                      addToast({ title: 'Invite declined', type: 'info' });
-                    } catch {
-                      addToast({ title: 'Could not decline invite', type: 'error' });
-                    }
-                  }}
-                  inviteActionPending={acceptInvite.isPending || declineInvite.isPending}
-                />
-              ))}
-            </AnimatePresence>
+          <div className="mx-1 flex flex-wrap items-center gap-1">
+            {visible.map((entry, i) =>
+              entry === 'gap' ? (
+                <span
+                  key={`gap-${i}`}
+                  className="px-1 text-xs font-medium text-foreground-subtle"
+                  aria-hidden
+                >
+                  …
+                </span>
+              ) : (
+                <button
+                  key={entry}
+                  type="button"
+                  disabled={isBusy}
+                  onClick={() => onPageChange(entry)}
+                  className={`min-h-9 min-w-9 rounded-lg text-sm font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-40 ${
+                    entry === page
+                      ? 'bg-primary text-primary-foreground shadow-[0_0_16px_-4px_rgba(124,58,237,0.5)]'
+                      : 'text-foreground-muted hover:bg-surface-hover hover:text-foreground'
+                  }`}
+                >
+                  {entry}
+                </button>
+              ),
+            )}
           </div>
 
-          {(data.hasPreviousPage || data.hasNextPage) && (
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!data.hasPreviousPage}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-foreground-muted">
-                Page {data.page} of {Math.ceil(data.totalCount / pageSize)}
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={!data.hasNextPage}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+          <PaginationIconButton
+            label="Next page"
+            disabled={!hasNext || isBusy}
+            onClick={() => onPageChange(page + 1)}
+          >
+            <ChevronRightIcon />
+          </PaginationIconButton>
+          <PaginationIconButton
+            label="Last page"
+            disabled={!hasNext || isBusy}
+            onClick={() => onPageChange(totalPages)}
+          >
+            <ChevronDoubleRightIcon />
+          </PaginationIconButton>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function PaginationIconButton({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-surface/80 text-foreground-muted transition-colors hover:border-border-hover hover:bg-surface-hover hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+    >
+      {children}
+    </button>
+  );
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+    </svg>
+  );
+}
+
+function ChevronDoubleLeftIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.75 19.5L11.25 12l7.5-7.5M12 19.5L4.5 12 12 4.5" />
+    </svg>
+  );
+}
+
+function ChevronDoubleRightIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 4.5l7.5 7.5-7.5 7.5M12 4.5l7.5 7.5-7.5 7.5" />
+    </svg>
   );
 }
 
@@ -175,7 +395,8 @@ function NotificationItem({
   onDeclineInvite: (inviteId: string) => void;
   inviteActionPending: boolean;
 }) {
-  const meta = TYPE_META[notification.type] ?? TYPE_META.SystemMessage;
+  const fallback = { icon: <MegaphoneIcon />, color: 'text-foreground-muted' };
+  const meta = TYPE_META[notification.type] ?? fallback;
   const linkTarget = getNotificationLink(notification);
   const isRoomInvite = notification.type === 'RoomInvite' && !notification.isRead && notification.data?.inviteId;
 
@@ -283,6 +504,9 @@ function getNotificationLink(notification: NotificationResponse): string | null 
       return data.userId ? `/profile/${data.userId}` : null;
     case 'SubscriptionChanged':
       return '/subscriptions';
+    case 'CommunityTopicCommented':
+    case 'CommunityMentioned':
+      return data.postId ? `/community/topics/${data.postId}` : '/community';
     default:
       return null;
   }

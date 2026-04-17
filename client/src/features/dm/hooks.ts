@@ -33,6 +33,7 @@ export function useCreateConversation() {
     mutationFn: (data: CreateConversationRequest) => createConversation(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
+      void qc.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }
@@ -48,6 +49,7 @@ export function useSendMessage() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.dm.messages(vars.conversationId) });
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
+      void qc.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }
@@ -58,6 +60,7 @@ export function useMarkRead() {
     mutationFn: (conversationId: string) => markConversationRead(conversationId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.dm.conversations() });
+      void qc.invalidateQueries({ queryKey: queryKeys.users.recentActivity() });
     },
   });
 }

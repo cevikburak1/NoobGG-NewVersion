@@ -17,6 +17,7 @@ export interface PagedResult<T> {
 
 export interface RoomFilters {
   gameId?: string;
+  creatorId?: string;
   region?: Region;
   language?: Language;
   tag?: string;

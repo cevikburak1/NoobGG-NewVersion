@@ -25,10 +25,20 @@ public class GetRoomsQueryHandler : IRequestHandler<GetRoomsQuery, Result<PagedR
         var filterBuilder = Builders<Room>.Filter;
         var filters = new List<FilterDefinition<Room>>();
 
-        // Default to showing only public, open rooms unless explicitly filtered
-        var status = request.Status ?? RoomStatus.Open;
-        filters.Add(filterBuilder.Eq(r => r.Status, status));
-        filters.Add(filterBuilder.Eq(r => r.IsPublic, true));
+        // CreatorId filter: when filtering by creator, show all their rooms (including private/closed)
+        if (!string.IsNullOrWhiteSpace(request.CreatorId))
+        {
+            filters.Add(filterBuilder.Eq(r => r.CreatorId, request.CreatorId));
+            if (request.Status.HasValue)
+                filters.Add(filterBuilder.Eq(r => r.Status, request.Status.Value));
+        }
+        else
+        {
+            // Default to showing only public, open rooms unless explicitly filtered
+            var status = request.Status ?? RoomStatus.Open;
+            filters.Add(filterBuilder.Eq(r => r.Status, status));
+            filters.Add(filterBuilder.Eq(r => r.IsPublic, true));
+        }
 
         if (!string.IsNullOrWhiteSpace(request.GameId))
             filters.Add(filterBuilder.Eq(r => r.GameId, request.GameId));

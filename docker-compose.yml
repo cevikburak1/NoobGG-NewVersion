@@ -11,6 +11,7 @@ services:
       - MongoDb__ConnectionString=mongodb://mongo:27017
       - MongoDb__DatabaseName=noobgg
       - Redis__ConnectionString=redis:6379
+      - DemoSeed__Enabled=true
     depends_on:
       - mongo
       - redis

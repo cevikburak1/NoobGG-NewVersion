@@ -29,4 +29,16 @@ public static class CollectionNames
     public const string GuildInvites = "guildInvites";
     public const string GuildJoinRequests = "guildJoinRequests";
     public const string MatchResults = "matchResults";
+    public const string MatchQueueEntries = "matchQueueEntries";
+    public const string DemoSeedMarkers = "demoSeedMarkers";
+
+    public const string CommunityPosts = "communityPosts";
+    public const string CommunityComments = "communityComments";
+    public const string Guides = "guides";
+    public const string ContentVotes = "contentVotes";
+    public const string GuildEvents = "guildEvents";
+    public const string Tournaments = "tournaments";
+    public const string TournamentEntries = "tournamentEntries";
+    public const string TournamentMatches = "tournamentMatches";
+    public const string RecentActivities = "recentActivities";
 }

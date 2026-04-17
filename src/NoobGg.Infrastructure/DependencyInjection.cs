@@ -6,6 +6,7 @@ using NoobGg.Infrastructure.Auth;
 using NoobGg.Infrastructure.Caching;
 using NoobGg.Infrastructure.Chat;
 using NoobGg.Infrastructure.Email;
+using NoobGg.Infrastructure.OpenAi;
 using NoobGg.Infrastructure.Persistence;
 using NoobGg.Infrastructure.Rawg;
 using NoobGg.Infrastructure.Moderation;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddModerationServices();
         services.AddEmailServices(configuration);
         services.AddFileStorage(configuration);
+        services.AddOpenAiServices(configuration);
 
         return services;
     }
@@ -67,6 +69,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IChatPresenceService, ChatPresenceService>();
         services.AddSingleton<IPresenceTracker, InMemoryPresenceTracker>();
+        services.AddScoped<IRecentActivityService, RecentActivityService>();
         return services;
     }
 
@@ -108,6 +111,18 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IGameSyncService, GameSyncService>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddOpenAiServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<OpenAiSettings>(configuration.GetSection(OpenAiSettings.SectionName));
+
+        services.AddHttpClient<IEmbeddingService, OpenAiEmbeddingService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
 
         return services;
     }

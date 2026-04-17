@@ -5,7 +5,10 @@ const tabs = [
   { to: '/rooms', label: 'Rooms' },
   { to: '/guilds', label: 'Guilds' },
   { to: '/discover', label: 'Discover' },
+  { to: '/community', label: 'Forum' },
+  { to: '/compare', label: 'Compare' },
   { to: '/leaderboard', label: 'Ranks' },
+  { to: '/tournaments', label: 'Tourneys' },
   { to: '/settings', label: 'Settings' },
 ];
 

@@ -3,6 +3,29 @@ import type { GameBrowseParams } from '@/features/games/types';
 import type { PlayerDiscoverParams } from '@/features/users/types';
 
 export const queryKeys = {
+  community: {
+    boards: () => ['community', 'boards'] as const,
+    topics: (board: string, sort = 'latest', page = 1, pageSize = 12) =>
+      ['community', 'topics', board, sort, page, pageSize] as const,
+    topicDetail: (topicId: string) => ['community', 'topic', topicId] as const,
+    feed: (gameId: string, page = 1) => ['community', 'feed', gameId, page] as const,
+    comments: (postId: string, page = 1, pageSize = 20) =>
+      ['community', 'comments', postId, page, pageSize] as const,
+  },
+  guides: {
+    list: (gameId?: string, sortBy?: string, page = 1) => ['guides', 'list', gameId, sortBy, page] as const,
+    detail: (id: string) => ['guides', 'detail', id] as const,
+  },
+  guildAnalytics: {
+    stats: (guildId: string, gameId?: string, days = 30) => ['guildAnalytics', 'stats', guildId, gameId, days] as const,
+  },
+  guildEvents: {
+    list: (guildId: string, from?: string, to?: string) => ['guildEvents', guildId, from, to] as const,
+  },
+  tournaments: {
+    list: (params: Record<string, unknown>) => ['tournaments', 'list', params] as const,
+    detail: (id: string) => ['tournaments', 'detail', id] as const,
+  },
   auth: {
     me: () => ['auth', 'me'] as const,
   },
@@ -28,6 +51,7 @@ export const queryKeys = {
   },
   users: {
     discover: (params: PlayerDiscoverParams) => ['users', 'discover', params] as const,
+    recentActivity: () => ['users', 'recentActivity'] as const,
   },
   profile: {
     me: () => ['profile', 'me'] as const,
@@ -66,10 +90,18 @@ export const queryKeys = {
   },
   recommendations: {
     players: (limit: number) => ['recommendations', 'players', limit] as const,
+    playersAi: (limit: number) => ['recommendations', 'players', 'ai', limit] as const,
     rooms: (limit: number) => ['recommendations', 'rooms', limit] as const,
+  },
+  recent: {
+    players: (limit: number) => ['recent', 'players', limit] as const,
+    rooms: (limit: number) => ['recent', 'rooms', limit] as const,
   },
   elo: {
     leaderboard: (gameId: string, page: number) => ['elo', 'leaderboard', gameId, page] as const,
     history: (userId: string, gameId: string) => ['elo', 'history', userId, gameId] as const,
+  },
+  matchmaking: {
+    queueStatus: () => ['matchmaking', 'queueStatus'] as const,
   },
 } as const;

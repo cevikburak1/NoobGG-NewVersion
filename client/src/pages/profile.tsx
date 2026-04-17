@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useProfile } from '@/features/profile/hooks';
@@ -6,6 +6,7 @@ import { useBlockUser, useUnblockUser } from '@/features/blocks/hooks';
 import { useSendFriendRequest, useAcceptFriendRequest, useRemoveFriend } from '@/features/friends/hooks';
 import { useToggleFavorite } from '@/features/favorites/hooks';
 import { useEloHistory } from '@/features/elo/hooks';
+import { useRooms } from '@/features/rooms/hooks';
 import {
   Button,
   Badge,
@@ -33,7 +34,37 @@ export default function ProfilePage() {
   const { add: addFav, remove: removeFav, isLoading: favLoading } = useToggleFavorite(userId ?? '');
   const { addToast } = useToast();
 
+  const [createdRoomsPage, setCreatedRoomsPage] = useState(1);
+  const createdRoomsPageSize = 6;
+  const [gamesPage, setGamesPage] = useState(1);
+  const gamesPageSize = 6;
   const { data: profile, isLoading, refetch } = useProfile(userId);
+  const { data: createdRooms } = useRooms({
+    creatorId: userId ?? '__unknown__',
+    page: createdRoomsPage,
+    pageSize: createdRoomsPageSize,
+  });
+  const createdRoomsTotalPages = createdRooms ? Math.max(1, Math.ceil(createdRooms.totalCount / createdRoomsPageSize)) : 1;
+
+  useEffect(() => {
+    setCreatedRoomsPage(1);
+    setGamesPage(1);
+  }, [userId]);
+
+  useEffect(() => {
+    if (createdRoomsPage > createdRoomsTotalPages) {
+      setCreatedRoomsPage(createdRoomsTotalPages);
+    }
+  }, [createdRoomsPage, createdRoomsTotalPages]);
+
+  const gamesTotalPages = profile?.games ? Math.max(1, Math.ceil(profile.games.length / gamesPageSize)) : 1;
+  const paginatedGames = profile?.games ? profile.games.slice((gamesPage - 1) * gamesPageSize, gamesPage * gamesPageSize) : [];
+
+  useEffect(() => {
+    if (gamesPage > gamesTotalPages) {
+      setGamesPage(gamesTotalPages);
+    }
+  }, [gamesPage, gamesTotalPages]);
 
   if (isLoading) {
     return (
@@ -384,42 +415,193 @@ export default function ProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-foreground">Game Profiles</h2>
-            {profile.isOwnProfile && (
-              <Link to="/profile/games">
-                <Button variant="outline" size="sm">
-                  Manage Games
-                </Button>
-              </Link>
-            )}
-          </div>
-          {profile.games.length > 0 ? (
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="show"
-              className="grid gap-4 sm:grid-cols-2"
-            >
-              {profile.games.map((gp) => (
-                <GameProfileCard key={gp.id} gp={gp} userId={profile.userId} />
-              ))}
-            </motion.div>
-          ) : (
-            <Card className="text-center">
-              <div className="py-8">
-                <div className="text-4xl">🎮</div>
-                <p className="mt-2 text-foreground-muted">No game profiles yet</p>
-                {profile.isOwnProfile && (
-                  <Link to="/profile/games" className="mt-3 inline-block">
-                    <Button variant="outline" size="sm">
-                      Add Game Profile
-                    </Button>
-                  </Link>
-                )}
+          <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-surface via-surface to-primary/5">
+            <div className="flex items-center justify-between border-b border-border/70 p-4">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Oyun Profilleri</h2>
+                <p className="text-xs text-foreground-muted">
+                  Oyun profilleri sayfalı gösterilir.
+                </p>
               </div>
-            </Card>
-          )}
+              {profile.isOwnProfile && (
+                <Link to="/profile/games">
+                  <Button variant="outline" size="sm">
+                    Oyunları Yönet
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            {profile.games.length > 0 ? (
+              <>
+                <motion.div
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                  className="grid max-h-112 gap-4 overflow-y-auto p-4 sm:grid-cols-2"
+                >
+                  {paginatedGames.map((gp) => (
+                    <GameProfileCard key={gp.id} gp={gp} userId={profile.userId} />
+                  ))}
+                </motion.div>
+
+                <div className="flex items-center justify-between border-t border-border/70 px-4 py-3">
+                  <p className="text-xs text-foreground-muted">
+                    Toplam {profile.games.length} oyun profili · Sayfa {gamesPage} / {gamesTotalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setGamesPage((prev) => Math.max(1, prev - 1))}
+                      disabled={gamesPage <= 1}
+                    >
+                      Önceki
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setGamesPage((prev) => Math.min(gamesTotalPages, prev + 1))}
+                      disabled={gamesPage >= gamesTotalPages}
+                    >
+                      Sonraki
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-4">
+                <Card className="text-center">
+                  <div className="py-8">
+                    <div className="text-4xl">🎮</div>
+                    <p className="mt-2 text-foreground-muted">Henüz oyun profili yok</p>
+                    {profile.isOwnProfile && (
+                      <Link to="/profile/games" className="mt-3 inline-block">
+                        <Button variant="outline" size="sm">
+                          Oyun Profili Ekle
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-surface via-surface to-primary/5">
+            <div className="flex items-center justify-between border-b border-border/70 p-4">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">
+                  {profile.isOwnProfile ? 'Açtığım Odalar' : 'Açtığı Odalar'}
+                </h2>
+                <p className="text-xs text-foreground-muted">
+                  Oda geçmişi sayfalı gösterilir, profil sonsuza uzamaz.
+                </p>
+              </div>
+              {profile.isOwnProfile && (
+                <Link to="/rooms">
+                  <Button variant="outline" size="sm">
+                    Tüm Odalar
+                  </Button>
+                </Link>
+              )}
+            </div>
+
+            {createdRooms && createdRooms.items.length > 0 ? (
+              <>
+                <motion.div
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                  className="grid max-h-112 gap-3 overflow-y-auto p-4 sm:grid-cols-2"
+                >
+                  {createdRooms.items.map((room) => (
+                    <motion.div key={room.id} variants={staggerItem}>
+                      <Link to={`/rooms/${room.id}`}>
+                        <Card className="cursor-pointer border-border/80 p-4 transition-colors hover:border-primary/40">
+                          <div className="flex items-start gap-3">
+                            {room.gameImageUrl ? (
+                              <img
+                                src={room.gameImageUrl}
+                                alt={room.gameName ?? ''}
+                                className="h-12 w-16 shrink-0 rounded object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded bg-surface-hover text-xl">
+                                🎮
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-semibold text-foreground">{room.title}</p>
+                              <p className="text-xs text-foreground-muted">{room.gameName}</p>
+                              <div className="mt-1 flex items-center gap-2 text-xs text-foreground-subtle">
+                                <span>{room.currentMemberCount}/{room.maxMembers} üye</span>
+                                <span>-</span>
+                                <Badge
+                                  variant={room.status === 'Open' ? 'success' : room.status === 'Full' ? 'warning' : 'default'}
+                                  size="sm"
+                                >
+                                  {room.status === 'Open' ? 'Açık' : room.status === 'Full' ? 'Dolu' : room.status === 'Closed' ? 'Kapalı' : room.status}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                <div className="flex items-center justify-between border-t border-border/70 px-4 py-3">
+                  <p className="text-xs text-foreground-muted">
+                    Toplam {createdRooms.totalCount} oda · Sayfa {createdRoomsPage} / {createdRoomsTotalPages}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCreatedRoomsPage((prev) => Math.max(1, prev - 1))}
+                      disabled={createdRoomsPage <= 1}
+                    >
+                      Önceki
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCreatedRoomsPage((prev) => Math.min(createdRoomsTotalPages, prev + 1))}
+                      disabled={createdRoomsPage >= createdRoomsTotalPages}
+                    >
+                      Sonraki
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-4">
+                <Card className="text-center">
+                  <div className="py-8">
+                    <div className="text-4xl">🏠</div>
+                    <p className="mt-2 text-foreground-muted">
+                      {profile.isOwnProfile ? 'Henüz oda açmadın' : 'Henüz oda açmamış'}
+                    </p>
+                    {profile.isOwnProfile && (
+                      <Link to="/rooms" className="mt-3 inline-block">
+                        <Button variant="outline" size="sm">
+                          Oda Oluştur
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+          </Card>
         </motion.div>
       </div>
     </AnimatedPage>

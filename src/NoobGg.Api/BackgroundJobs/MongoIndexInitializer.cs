@@ -61,6 +61,16 @@ public class MongoIndexInitializer : IHostedService
         await CreateGuildJoinRequestIndexes(ct);
         await CreateMatchResultIndexes(ct);
         await CreateEloIndexes(ct);
+        await CreateMatchQueueIndexes(ct);
+        await CreateCommunityPostIndexes(ct);
+        await CreateCommunityCommentIndexes(ct);
+        await CreateGuideIndexes(ct);
+        await CreateContentVoteIndexes(ct);
+        await CreateGuildEventIndexes(ct);
+        await CreateTournamentIndexes(ct);
+        await CreateTournamentEntryIndexes(ct);
+        await CreateTournamentMatchIndexes(ct);
+        await CreateRecentActivityIndexes(ct);
     }
 
     private async Task CreateUserIndexes(CancellationToken ct)
@@ -525,6 +535,8 @@ public class MongoIndexInitializer : IHostedService
     private async Task CreateGuildJoinRequestIndexes(CancellationToken ct)
     {
         var col = _mongoContext.GetCollection<GuildJoinRequest>(CollectionNames.GuildJoinRequests);
+        await DropLegacyIndexes(col, ["idx_guildJoin_guildId_userId_status"], ct);
+
         await col.Indexes.CreateManyAsync([
             new CreateIndexModel<GuildJoinRequest>(
                 Builders<GuildJoinRequest>.IndexKeys
@@ -570,6 +582,158 @@ public class MongoIndexInitializer : IHostedService
                     .Ascending(p => p.GameId)
                     .Descending(p => p.EloPoints),
                 new CreateIndexOptions { Name = "idx_gameId_eloPoints" })
+        ], ct);
+    }
+
+    private async Task CreateMatchQueueIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<MatchQueueEntry>(CollectionNames.MatchQueueEntries);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<MatchQueueEntry>(
+                Builders<MatchQueueEntry>.IndexKeys
+                    .Ascending(e => e.UserId)
+                    .Descending(e => e.UpdatedAt),
+                new CreateIndexOptions { Name = "idx_userId_updatedAt" }),
+            new CreateIndexModel<MatchQueueEntry>(
+                Builders<MatchQueueEntry>.IndexKeys
+                    .Ascending(e => e.Status)
+                    .Ascending(e => e.GameId)
+                    .Ascending(e => e.Region)
+                    .Ascending(e => e.Language)
+                    .Ascending(e => e.CreatedAt),
+                new CreateIndexOptions { Name = "idx_status_game_region_lang_created" })
+        ], ct);
+    }
+
+    private async Task CreateCommunityPostIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<CommunityPost>(CollectionNames.CommunityPosts);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys.Ascending(p => p.GameId).Descending(p => p.CreatedAt),
+                new CreateIndexOptions { Name = "idx_gameId_createdAt" }),
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys.Ascending(p => p.BoardType).Descending(p => p.LastActivityAt),
+                new CreateIndexOptions { Name = "idx_boardType_lastActivityAt" }),
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys
+                    .Ascending(p => p.BoardType)
+                    .Ascending(p => p.GameId)
+                    .Descending(p => p.LastActivityAt),
+                new CreateIndexOptions { Name = "idx_boardType_gameId_lastActivityAt" }),
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys.Ascending(p => p.Slug),
+                new CreateIndexOptions { Name = "idx_slug" }),
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys.Ascending(p => p.AuthorId),
+                new CreateIndexOptions { Name = "idx_authorId" })
+        ], ct);
+    }
+
+    private async Task CreateCommunityCommentIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<CommunityComment>(CollectionNames.CommunityComments);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<CommunityComment>(
+                Builders<CommunityComment>.IndexKeys.Ascending(c => c.PostId).Ascending(c => c.CreatedAt),
+                new CreateIndexOptions { Name = "idx_postId_createdAt" })
+        ], ct);
+    }
+
+    private async Task CreateGuideIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Guide>(CollectionNames.Guides);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Guide>(
+                Builders<Guide>.IndexKeys.Ascending(g => g.GameId).Ascending(g => g.Status).Descending(g => g.CreatedAt),
+                new CreateIndexOptions { Name = "idx_gameId_status_createdAt" }),
+            new CreateIndexModel<Guide>(
+                Builders<Guide>.IndexKeys.Ascending(g => g.AuthorId),
+                new CreateIndexOptions { Name = "idx_authorId" })
+        ], ct);
+    }
+
+    private async Task CreateContentVoteIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<ContentVote>(CollectionNames.ContentVotes);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<ContentVote>(
+                Builders<ContentVote>.IndexKeys
+                    .Ascending(v => v.UserId)
+                    .Ascending(v => v.TargetId)
+                    .Ascending(v => v.TargetType),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_targetId_targetType_unique" }),
+            new CreateIndexModel<ContentVote>(
+                Builders<ContentVote>.IndexKeys.Ascending(v => v.TargetId),
+                new CreateIndexOptions { Name = "idx_targetId" })
+        ], ct);
+    }
+
+    private async Task CreateGuildEventIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<GuildEvent>(CollectionNames.GuildEvents);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<GuildEvent>(
+                Builders<GuildEvent>.IndexKeys.Ascending(e => e.GuildId).Ascending(e => e.StartsAt),
+                new CreateIndexOptions { Name = "idx_guildId_startsAt" })
+        ], ct);
+    }
+
+    private async Task CreateTournamentIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<Tournament>(CollectionNames.Tournaments);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<Tournament>(
+                Builders<Tournament>.IndexKeys.Ascending(t => t.GameId).Ascending(t => t.Status).Descending(t => t.CreatedAt),
+                new CreateIndexOptions { Name = "idx_gameId_status_createdAt" }),
+            new CreateIndexModel<Tournament>(
+                Builders<Tournament>.IndexKeys.Ascending(t => t.GuildId),
+                new CreateIndexOptions { Name = "idx_guildId" })
+        ], ct);
+    }
+
+    private async Task CreateTournamentEntryIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<TournamentEntry>(CollectionNames.TournamentEntries);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<TournamentEntry>(
+                Builders<TournamentEntry>.IndexKeys.Ascending(e => e.TournamentId).Ascending(e => e.ParticipantId),
+                new CreateIndexOptions { Unique = true, Name = "idx_tournamentId_participantId_unique" }),
+            new CreateIndexModel<TournamentEntry>(
+                Builders<TournamentEntry>.IndexKeys.Ascending(e => e.TournamentId).Ascending(e => e.Seed),
+                new CreateIndexOptions { Name = "idx_tournamentId_seed" })
+        ], ct);
+    }
+
+    private async Task CreateTournamentMatchIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<TournamentMatch>(CollectionNames.TournamentMatches);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<TournamentMatch>(
+                Builders<TournamentMatch>.IndexKeys.Ascending(m => m.TournamentId).Ascending(m => m.Round).Ascending(m => m.MatchNumber),
+                new CreateIndexOptions { Name = "idx_tournamentId_round_matchNumber" })
+        ], ct);
+    }
+
+    private async Task CreateRecentActivityIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<RecentActivity>(CollectionNames.RecentActivities);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<RecentActivity>(
+                Builders<RecentActivity>.IndexKeys
+                    .Ascending(r => r.UserId)
+                    .Ascending(r => r.TargetId)
+                    .Ascending(r => r.TargetType),
+                new CreateIndexOptions { Unique = true, Name = "idx_userId_targetId_targetType_unique" }),
+            new CreateIndexModel<RecentActivity>(
+                Builders<RecentActivity>.IndexKeys
+                    .Ascending(r => r.UserId)
+                    .Ascending(r => r.TargetType)
+                    .Descending(r => r.SeenAt),
+                new CreateIndexOptions { Name = "idx_userId_targetType_seenAt" }),
+            new CreateIndexModel<RecentActivity>(
+                Builders<RecentActivity>.IndexKeys.Ascending(r => r.SeenAt),
+                new CreateIndexOptions { Name = "idx_seenAt_ttl", ExpireAfter = TimeSpan.FromDays(30) })
         ], ct);
     }
 

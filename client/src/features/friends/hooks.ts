@@ -15,6 +15,7 @@ function invalidateFriendCaches(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: queryKeys.friends.requests() }),
     qc.invalidateQueries({ queryKey: ['profile'] }),
     qc.invalidateQueries({ queryKey: ['users'] }),
+    qc.invalidateQueries({ queryKey: queryKeys.users.recentActivity() }),
   ]);
 }
 

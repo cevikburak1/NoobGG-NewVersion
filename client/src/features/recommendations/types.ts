@@ -40,3 +40,28 @@ export interface RecommendedRoomResponse {
   score: number;
   matchReasons: string[];
 }
+
+export interface AiRecommendedPlayersResponse {
+  players: RecommendedPlayerResponse[];
+  usedAi: boolean;
+}
+
+export interface RecentPlayerResponse {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  country: string | null;
+  isOnline: boolean;
+  seenAt: string;
+}
+
+export interface RecentRoomResponse {
+  id: string;
+  title: string;
+  gameName: string | null;
+  gameImageUrl: string | null;
+  status: string;
+  currentMemberCount: number;
+  maxMembers: number;
+  seenAt: string;
+}

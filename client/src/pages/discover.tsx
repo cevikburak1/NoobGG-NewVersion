@@ -3,14 +3,19 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useGameBrowse, useGameSearch } from '@/features/games/hooks';
 import { useDiscoverPlayers } from '@/features/users/hooks';
-import { useRecommendedPlayers } from '@/features/recommendations/hooks';
+import {
+  useRecommendedPlayers,
+  useAiRecommendedPlayers,
+  useRecentPlayers,
+  useRecentRooms,
+} from '@/features/recommendations/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
-import { Button, Input, Badge, AnimatedPage, staggerContainer, staggerItem } from '@/components/ui';
+import { Button, Badge, AnimatedPage, staggerContainer, staggerItem, Toggle } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { GameCard } from '@/components/common/gameCard';
 import type { DiscoverPlayerResponse } from '@/features/users/types';
-import type { RecommendedPlayerResponse } from '@/features/recommendations/types';
+import type { RecommendedPlayerResponse, RecentPlayerResponse, RecentRoomResponse } from '@/features/recommendations/types';
 
 const REGIONS = ['All', 'EU', 'NA', 'TR', 'AS', 'SA', 'OCE', 'ME', 'AF', 'CIS', 'SEA'] as const;
 const LEVELS = ['All', 'Beginner', 'Intermediate', 'Advanced', 'Expert'] as const;
@@ -121,8 +126,18 @@ export default function DiscoverPage() {
     onlyLFT ||
     gameFilterId;
 
-  const { data: recommendedPlayers } = useRecommendedPlayers(6);
+  const [useAiRecommendations, setUseAiRecommendations] = useState(false);
+
+  const { data: recommendedPlayers } = useRecommendedPlayers(5);
+  const { data: aiRecommendedData, isLoading: aiLoading } = useAiRecommendedPlayers(5, useAiRecommendations);
+  const { data: recentPlayers } = useRecentPlayers(5);
+  const { data: recentRooms } = useRecentRooms(5);
+
   const showRecommendations = isAuth && !hasActiveFilters && activeTab === 'players';
+  const displayedRecommendations = useAiRecommendations
+    ? aiRecommendedData?.players ?? []
+    : recommendedPlayers ?? [];
+  const showRecent = isAuth && !hasActiveFilters && (recentPlayers?.length || recentRooms?.length);
 
   const totalGames = gamesResult?.totalCount ?? 0;
   const totalPlayers = playersResult?.totalCount ?? 0;
@@ -322,8 +337,45 @@ export default function DiscoverPage() {
           </AnimatePresence>
         </motion.div>
 
+        {/* Recent Activity Section */}
+        {showRecent && activeTab === 'players' && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🕒</span>
+              <h2 className="text-sm font-semibold text-foreground">Recently Viewed</h2>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {recentPlayers && recentPlayers.length > 0 && (
+                <div className="flex-1 min-w-[280px]">
+                  <h3 className="mb-2 text-xs font-medium text-foreground-subtle uppercase tracking-wider">Players</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {recentPlayers.slice(0, 5).map((player) => (
+                      <RecentPlayerChip key={player.id} player={player} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {recentRooms && recentRooms.length > 0 && (
+                <div className="flex-1 min-w-[280px]">
+                  <h3 className="mb-2 text-xs font-medium text-foreground-subtle uppercase tracking-wider">Rooms</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {recentRooms.slice(0, 5).map((room) => (
+                      <RecentRoomChip key={room.id} room={room} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="h-px bg-border/50" />
+          </motion.div>
+        )}
+
         {/* Recommended Players */}
-        {showRecommendations && recommendedPlayers && recommendedPlayers.length > 0 && (
+        {showRecommendations && (displayedRecommendations.length > 0 || aiLoading) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -331,16 +383,43 @@ export default function DiscoverPage() {
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-sm">✨</span>
+                <span className="text-sm">{useAiRecommendations ? '🤖' : '✨'}</span>
                 <h2 className="text-sm font-semibold text-foreground">Recommended for you</h2>
+                {useAiRecommendations && aiRecommendedData?.usedAi === false && (
+                  <Badge variant="warning" className="text-[10px]">Fallback</Badge>
+                )}
               </div>
-              <span className="text-xs text-foreground-subtle">Based on your game profiles</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-foreground-subtle">
+                  {useAiRecommendations ? 'AI-powered matching' : 'Based on your game profiles'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-foreground-muted">AI</span>
+                  <Toggle checked={useAiRecommendations} onChange={setUseAiRecommendations} />
+                </div>
+              </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {recommendedPlayers.map((player) => (
-                <RecommendedPlayerCard key={player.id} player={player} />
-              ))}
-            </div>
+            {aiLoading && useAiRecommendations ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse rounded-xl border border-primary/15 bg-primary/3 p-3.5">
+                    <div className="flex items-center gap-3.5">
+                      <div className="h-10 w-10 rounded-full bg-surface-hover" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-24 rounded bg-surface-hover" />
+                        <div className="h-3 w-16 rounded bg-surface-hover" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {displayedRecommendations.map((player) => (
+                  <RecommendedPlayerCard key={player.id} player={player} />
+                ))}
+              </div>
+            )}
             <div className="h-px bg-border/50" />
           </motion.div>
         )}
@@ -728,5 +807,47 @@ function PlayerCard({ player }: { player: DiscoverPlayerResponse }) {
         </motion.div>
       </Link>
     </motion.div>
+  );
+}
+
+function RecentPlayerChip({ player }: { player: RecentPlayerResponse }) {
+  return (
+    <Link to={`/profile/${player.id}`}>
+      <motion.div
+        whileHover={{ scale: 1.03 }}
+        className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-primary/30 hover:bg-surface-hover"
+      >
+        <UserAvatar username={player.username} avatarUrl={player.avatarUrl} size="sm" />
+        <div className="min-w-0">
+          <span className="block truncate text-xs font-medium text-foreground">{player.username}</span>
+          <span className={`text-[10px] ${player.isOnline ? 'text-success' : 'text-foreground-subtle'}`}>
+            {player.isOnline ? '● Online' : 'Offline'}
+          </span>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+function RecentRoomChip({ room }: { room: RecentRoomResponse }) {
+  return (
+    <Link to={`/rooms/${room.id}`}>
+      <motion.div
+        whileHover={{ scale: 1.03 }}
+        className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-primary/30 hover:bg-surface-hover"
+      >
+        {room.gameImageUrl ? (
+          <img src={room.gameImageUrl} alt="" className="h-6 w-9 shrink-0 rounded object-cover" />
+        ) : (
+          <div className="flex h-6 w-9 shrink-0 items-center justify-center rounded bg-surface-hover text-[10px]">🎮</div>
+        )}
+        <div className="min-w-0">
+          <span className="block truncate text-xs font-medium text-foreground">{room.title}</span>
+          <span className="text-[10px] text-foreground-subtle">
+            {room.currentMemberCount}/{room.maxMembers} · {room.status}
+          </span>
+        </div>
+      </motion.div>
+    </Link>
   );
 }

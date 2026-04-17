@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Application.Features.Users.Queries.DiscoverPlayers;
+using NoobGg.Application.Features.Users.Queries.GetRecentActivity;
 using NoobGg.Domain.Entities;
 using NoobGg.Domain.Enums;
 
@@ -11,6 +13,14 @@ namespace NoobGg.Api.Controllers;
 [Route("api/users")]
 public class UsersController : ApiControllerBase
 {
+    [Authorize]
+    [HttpGet("recent-activity")]
+    public async Task<IActionResult> GetRecentActivity()
+    {
+        var result = await Mediator.Send(new GetRecentActivityQuery());
+        return HandleResult(result);
+    }
+
     [HttpGet("discover")]
     public async Task<IActionResult> Discover(
         [FromQuery] string? search = null,

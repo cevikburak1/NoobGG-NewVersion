@@ -6,6 +6,7 @@ using NoobGg.Application.Common.Models;
 using NoobGg.Application.Features.Rooms.Helpers;
 using NoobGg.Domain.Entities;
 using NoobGg.Domain.Enums;
+using RecentActivityTargetType = NoobGg.Domain.Enums.RecentActivityTargetType;
 
 namespace NoobGg.Application.Features.Rooms.Commands.LeaveRoom;
 
@@ -15,17 +16,20 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
     private readonly ICurrentUser _currentUser;
     private readonly IRoomNotificationService _roomNotification;
     private readonly INotificationService _notificationService;
+    private readonly IRecentActivityService _recentActivityService;
 
     public LeaveRoomCommandHandler(
         IMongoContext mongoContext,
         ICurrentUser currentUser,
         IRoomNotificationService roomNotification,
-        INotificationService notificationService)
+        INotificationService notificationService,
+        IRecentActivityService recentActivityService)
     {
         _mongoContext = mongoContext;
         _currentUser = currentUser;
         _roomNotification = roomNotification;
         _notificationService = notificationService;
+        _recentActivityService = recentActivityService;
     }
 
     public async Task<Result> Handle(LeaveRoomCommand request, CancellationToken ct)
@@ -82,6 +86,8 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
 
             await _roomNotification.NotifyRoomListChangedAsync(ct);
 
+            _ = _recentActivityService.UpsertAsync(userId, request.RoomId, RecentActivityTargetType.Room, ct);
+
             return Result.Success();
         }
 
@@ -129,6 +135,8 @@ public class LeaveRoomCommandHandler : IRequestHandler<LeaveRoomCommand, Result>
                 new Dictionary<string, string> { { "roomId", request.RoomId } },
                 ct);
         }
+
+        _ = _recentActivityService.UpsertAsync(userId, request.RoomId, RecentActivityTargetType.Room, ct);
 
         return Result.Success();
     }

@@ -8,6 +8,7 @@ namespace NoobGg.Application.Features.Rooms.Queries.GetRooms;
 public record GetRoomsQuery : IRequest<Result<PagedResult<RoomResponse>>>
 {
     public string? GameId { get; init; }
+    public string? CreatorId { get; init; }
     public Region? Region { get; init; }
     public Language? Language { get; init; }
     public string? Tag { get; init; }

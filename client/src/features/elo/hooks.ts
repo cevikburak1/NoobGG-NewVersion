@@ -11,11 +11,15 @@ export function useLeaderboard(gameId: string, page = 1, pageSize = 50) {
   });
 }
 
-export function useEloHistory(userId: string, gameId: string) {
+export function useEloHistory(
+  userId: string,
+  gameId: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: queryKeys.elo.history(userId, gameId),
     queryFn: () => getEloHistory(userId, gameId),
-    enabled: !!userId && !!gameId,
+    enabled: (options?.enabled ?? true) && Boolean(userId && gameId),
   });
 }
 

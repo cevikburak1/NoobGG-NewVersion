@@ -1,15 +1,15 @@
-import type { ReportStatus } from '@/types/enums';
+import type { ReportReason, ReportStatus, ReportTargetType } from '@/types/enums';
 
 export interface ReportResponse {
   id: string;
-  targetType: string;
+  targetType: ReportTargetType;
   reportedUserId: string;
   reportedUsername: string | null;
   roomId: string | null;
   roomTitle: string | null;
-  reason: string;
+  reason: ReportReason;
   description: string | null;
-  status: string;
+  status: ReportStatus;
   createdAt: string;
 }
 
@@ -17,14 +17,14 @@ export interface ReportDetailResponse {
   id: string;
   reporterId: string;
   reporterUsername: string | null;
-  targetType: string;
+  targetType: ReportTargetType;
   reportedUserId: string;
   reportedUsername: string | null;
   roomId: string | null;
   roomTitle: string | null;
-  reason: string;
+  reason: ReportReason;
   description: string | null;
-  status: string;
+  status: ReportStatus;
   reviewedBy: string | null;
   reviewerUsername: string | null;
   reviewNote: string | null;
@@ -44,3 +44,7 @@ export interface CreateReportRequest {
   reason: string;
   description?: string;
 }
+
+export type ReviewAction = 'warn' | 'suspend' | 'ban' | 'dismiss';
+
+export type SuspensionDuration = '1d' | '7d' | '30d';

@@ -17,5 +17,7 @@ public enum NotificationType
     GuildLeft,
     GuildJoinRequestReceived,
     GuildJoinRequestApproved,
-    GuildJoinRequestRejected
+    GuildJoinRequestRejected,
+    CommunityTopicCommented,
+    CommunityMentioned
 }

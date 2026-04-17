@@ -1,8 +1,12 @@
 import { useParams, Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useGameDetail } from '@/features/games/hooks';
 import { Button, Badge, AnimatedPage, Spinner } from '@/components/ui';
+import { CommunityFeed } from '@/components/community/communityFeed';
+import { GuideList } from '@/components/guides/guideList';
+import { useTournaments } from '@/features/tournaments/hooks';
+import type { TournamentListItemResponse } from '@/features/tournaments/types';
 
 const PLATFORM_META: Record<string, { icon: string; color: string }> = {
   PC: { icon: '🖥️', color: 'from-blue-500/20 to-blue-600/10' },
@@ -77,6 +81,129 @@ function StatCard({ icon, label, value, delay }: { icon: string; label: string; 
         <div className="text-[11px] font-medium uppercase tracking-wider text-foreground-subtle">{label}</div>
         <div className="truncate text-sm font-semibold text-foreground">{value}</div>
       </div>
+    </motion.div>
+  );
+}
+
+const COMMUNITY_TABS = ['Feed', 'Guides', 'Tournaments'] as const;
+
+function MiniTournamentCard({ t }: { t: TournamentListItemResponse }) {
+  const statusColors: Record<string, string> = {
+    Registration: 'bg-accent/20 text-accent',
+    InProgress: 'bg-primary/20 text-primary',
+    Completed: 'bg-success/20 text-success',
+  };
+  return (
+    <Link to={`/tournaments/${t.id}`}>
+      <motion.div
+        whileHover={{ scale: 1.02, y: -2 }}
+        className="rounded-xl border border-border/50 bg-surface/60 p-4 backdrop-blur-sm transition-shadow hover:shadow-lg"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="truncate text-sm font-bold text-foreground">{t.name}</h4>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusColors[t.status] ?? 'bg-surface-hover text-foreground-muted'}`}>
+            {t.status}
+          </span>
+        </div>
+        <div className="mt-2 flex items-center gap-3 text-xs text-foreground-muted">
+          <span>{t.format}</span>
+          <span>{t.currentParticipants}/{t.maxParticipants} players</span>
+        </div>
+        {t.prizeBadges.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {t.prizeBadges.slice(0, 3).map((b) => (
+              <span key={b} className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] font-medium text-yellow-400">{b}</span>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    </Link>
+  );
+}
+
+function GameCommunityTabs({ gameId, gameName, gameSlug }: { gameId: string; gameName: string; gameSlug: string }) {
+  const [activeTab, setActiveTab] = useState<(typeof COMMUNITY_TABS)[number]>('Feed');
+  const { data: tournamentsData } = useTournaments({ gameId, page: 1 });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.55 }}
+      className="mt-10"
+    >
+      <div className="mb-6 flex items-center gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-foreground">Community Hub</h2>
+            <Link to={`/community/boards/${gameSlug}`}>
+              <Button variant="outline" size="sm">Open Full Forum</Button>
+            </Link>
+          </div>
+          <p className="mt-2 text-sm text-foreground-muted">
+            Quick discussions stay here. For full threads, topic browsing, and forum-style navigation, jump into the board.
+          </p>
+        </div>
+        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+          {COMMUNITY_TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`relative rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === tab ? 'text-foreground' : 'text-foreground-muted hover:text-foreground'
+              }`}
+            >
+              {activeTab === tab && (
+                <motion.div
+                  layoutId="communityTab"
+                  className="absolute inset-0 rounded-md bg-surface-hover"
+                  transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                />
+              )}
+              <span className="relative z-10">{tab}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === 'Feed' && <CommunityFeed gameId={gameId} />}
+
+      {activeTab === 'Guides' && <GuideList gameId={gameId} />}
+
+      {activeTab === 'Tournaments' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-foreground-muted">
+              Tournaments for <span className="font-semibold text-foreground">{gameName}</span>
+            </p>
+            <Link to="/tournaments">
+              <Button variant="outline" size="sm">View All Tournaments</Button>
+            </Link>
+          </div>
+          {tournamentsData?.tournaments && tournamentsData.tournaments.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {tournamentsData.tournaments.slice(0, 6).map((t, i) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * i }}
+                >
+                  <MiniTournamentCard t={t} />
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center rounded-2xl border border-border/50 bg-surface/40 py-12 text-center backdrop-blur-sm">
+              <span className="text-4xl">🏆</span>
+              <p className="mt-3 text-sm font-medium text-foreground-muted">No tournaments yet for this game</p>
+              <Link to="/tournaments" className="mt-3">
+                <Button size="sm">Browse Tournaments</Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -435,6 +562,9 @@ export default function GameDetailPage() {
               </motion.div>
             </div>
           </div>
+
+          {/* Community Hub Tabs */}
+          <GameCommunityTabs gameId={game.id} gameName={game.name} gameSlug={game.slug} />
 
           {/* Bottom spacing */}
           <div className="h-12" />

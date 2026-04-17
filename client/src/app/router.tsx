@@ -26,7 +26,15 @@ import FriendsPage from '@/pages/friends';
 import FavoritesPage from '@/pages/favorites';
 import GuildListPage from '@/pages/guildList';
 import GuildDetailPage from '@/pages/guildDetail';
+import GuildStatsPage from '@/pages/guildStats';
 import LeaderboardPage from '@/pages/leaderboard';
+import ComparePlayersPage from '@/pages/comparePlayers';
+import TournamentListPage from '@/pages/tournamentList';
+import TournamentDetailPage from '@/pages/tournamentDetail';
+import GuideDetailPage from '@/components/guides/guideDetailPage';
+import CommunityHomePage from '@/pages/communityHome';
+import CommunityBoardPage from '@/pages/communityBoard';
+import CommunityTopicDetailPage from '@/pages/communityTopicDetail';
 
 const routes: RouteObject[] = [
   {
@@ -86,6 +94,16 @@ const routes: RouteObject[] = [
         ),
       },
       {
+        path: '/guilds/:guildId/stats',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <GuildStatsPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: '/rooms/:roomId',
         element: (
           <ProtectedRoute>
@@ -113,6 +131,76 @@ const routes: RouteObject[] = [
           <ProtectedRoute>
             <RequireProfile>
               <DiscoverPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/community',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <CommunityHomePage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/community/boards/:boardSlug',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <CommunityBoardPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/community/topics/:topicId',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <CommunityTopicDetailPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/compare',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <ComparePlayersPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/tournaments',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <TournamentListPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/guides/:guideId',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <GuideDetailPage />
+            </RequireProfile>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '/tournaments/:tournamentId',
+        element: (
+          <ProtectedRoute>
+            <RequireProfile>
+              <TournamentDetailPage />
             </RequireProfile>
           </ProtectedRoute>
         ),

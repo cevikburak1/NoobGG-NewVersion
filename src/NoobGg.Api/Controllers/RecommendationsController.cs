@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NoobGg.Application.Features.Recommendations.Queries.GetAiRecommendedPlayers;
 using NoobGg.Application.Features.Recommendations.Queries.GetRecommendedPlayers;
 using NoobGg.Application.Features.Recommendations.Queries.GetRecommendedRooms;
 
@@ -13,6 +14,14 @@ public class RecommendationsController : ApiControllerBase
     public async Task<IActionResult> GetRecommendedPlayers([FromQuery] int limit = 6)
     {
         var query = new GetRecommendedPlayersQuery { Limit = Math.Clamp(limit, 1, 20) };
+        var result = await Mediator.Send(query);
+        return HandleResult(result);
+    }
+
+    [HttpGet("players/ai")]
+    public async Task<IActionResult> GetAiRecommendedPlayers([FromQuery] int limit = 10)
+    {
+        var query = new GetAiRecommendedPlayersQuery { Limit = Math.Clamp(limit, 1, 20) };
         var result = await Mediator.Send(query);
         return HandleResult(result);
     }
