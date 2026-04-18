@@ -29,6 +29,7 @@ public class GetCommunityFeedQueryHandler
         var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
         var votes = _mongoContext.GetCollection<ContentVote>(CollectionNames.ContentVotes);
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
+        var boards = _mongoContext.GetCollection<CommunityBoard>(CollectionNames.CommunityBoards);
 
         var filter = Builders<CommunityPost>.Filter.And(
             Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.Game),
@@ -60,6 +61,13 @@ public class GetCommunityFeedQueryHandler
             .ToDictionary(p => p.UserId);
         var gameMap = (await games.Find(g => gameIds.Contains(g.Id)).ToListAsync(ct))
             .ToDictionary(g => g.Id);
+        var boardIds = postList
+            .Select(p => p.BoardId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList()!;
+        var boardMap = (await boards.Find(b => boardIds.Contains(b.Id)).ToListAsync(ct))
+            .ToDictionary(b => b.Id);
 
         var currentUserId = _currentUser.IsAuthenticated ? _currentUser.UserId : null;
         var votedPostIds = new HashSet<string>();
@@ -76,7 +84,7 @@ public class GetCommunityFeedQueryHandler
         }
 
         var responseList = postList
-            .Select(p => CommunityDtoMapper.ToPostResponse(p, userMap, profileMap, gameMap, votedPostIds))
+            .Select(p => CommunityDtoMapper.ToPostResponse(p, boardMap, userMap, profileMap, gameMap, votedPostIds))
             .ToList();
 
         var hasMore = skip + request.PageSize < totalCount;

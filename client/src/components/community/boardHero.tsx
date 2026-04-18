@@ -45,7 +45,7 @@ export function BoardHero({ board, eyebrow = 'Forum Board', stats = [] }: BoardH
 
           <div className="flex flex-wrap gap-2">
             <Badge variant="accent" className="px-3 py-1.5 text-[11px] uppercase tracking-[0.2em]">
-              {board.boardType === 'General' ? 'Players' : 'Game Board'}
+              {board.category}
             </Badge>
             <Badge variant="default" className="px-3 py-1.5 text-xs">
               {board.topicCount} topics

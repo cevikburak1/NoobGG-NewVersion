@@ -5,6 +5,7 @@ namespace NoobGg.Domain.Entities;
 public class CommunityPost : BaseEntity
 {
     public string AuthorId { get; set; } = string.Empty;
+    public string? BoardId { get; set; }
     public CommunityBoardType BoardType { get; set; } = CommunityBoardType.Game;
     public string Category { get; set; } = "Discussion";
     public string Title { get; set; } = string.Empty;

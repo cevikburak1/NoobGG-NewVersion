@@ -7,8 +7,7 @@ namespace NoobGg.Application.Features.Community.Commands.CreatePost;
 
 public record CreateCommunityPostCommand : IRequest<Result<CommunityPostResponse>>
 {
-    public string? GameId { get; init; }
-    public CommunityBoardType BoardType { get; init; } = CommunityBoardType.Game;
+    public string? BoardId { get; init; }
     public string Category { get; init; } = "Discussion";
     public string? Title { get; init; }
     public string Content { get; init; } = string.Empty;

@@ -9,8 +9,8 @@ import { useCommunityBoardsOverview, useCommunityTopics } from '@/features/commu
 
 const SORT_OPTIONS = [
   { value: 'latest', label: 'Latest' },
-  { value: 'hot', label: 'Hot' },
-  { value: 'top', label: 'Top voted' },
+  { value: 'mostCommented', label: 'Most commented' },
+  { value: 'mostLiked', label: 'Most liked' },
 ] as const;
 
 export default function CommunityBoardPage() {
@@ -19,7 +19,7 @@ export default function CommunityBoardPage() {
   const [sort, setSort] = useState<(typeof SORT_OPTIONS)[number]['value']>('latest');
 
   const slug = boardSlug ?? 'general';
-  const { data: boardsData, isLoading: boardsLoading } = useCommunityBoardsOverview();
+  const { data: boardsData, isLoading: boardsLoading } = useCommunityBoardsOverview({ page: 1, pageSize: 200 });
   const { data: topicsData, isLoading: topicsLoading, isError } = useCommunityTopics(slug, sort, page, 10);
 
   const board = useMemo(
@@ -86,7 +86,7 @@ export default function CommunityBoardPage() {
 
         <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
           <div className="space-y-5">
-            <TopicComposer boardType={board.boardType} gameId={board.gameId} boardName={board.title} />
+            <TopicComposer boardId={board.id} boardCategory={board.category} boards={boardsData?.boards ?? []} />
             <TopicList data={topicsData} onPageChange={setPage} />
           </div>
 

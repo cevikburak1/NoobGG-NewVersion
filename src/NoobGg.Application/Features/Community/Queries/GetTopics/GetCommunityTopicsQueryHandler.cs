@@ -23,15 +23,17 @@ public class GetCommunityTopicsQueryHandler
 
     public async Task<Result<CommunityTopicListResponse>> Handle(GetCommunityTopicsQuery request, CancellationToken ct)
     {
+        var boardsCollection = _mongoContext.GetCollection<CommunityBoard>(CollectionNames.CommunityBoards);
         var posts = _mongoContext.GetCollection<CommunityPost>(CollectionNames.CommunityPosts);
         var users = _mongoContext.GetCollection<User>(CollectionNames.Users);
         var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
         var votes = _mongoContext.GetCollection<ContentVote>(CollectionNames.ContentVotes);
 
-        var filter = await BuildBoardFilterAsync(request.BoardSlug, games, ct);
-        if (filter is null)
+        var board = await ResolveBoardAsync(boardsCollection, request, ct);
+        if (board is null)
             return Result<CommunityTopicListResponse>.NotFound("Board not found");
+        var filter = BuildBoardFilter(board);
 
         var totalCount = (int)await posts.CountDocumentsAsync(filter, cancellationToken: ct);
         var skip = (request.Page - 1) * request.PageSize;
@@ -39,8 +41,8 @@ public class GetCommunityTopicsQueryHandler
         var query = posts.Find(filter);
         query = request.Sort.ToLowerInvariant() switch
         {
-            "top" => query.SortByDescending(p => p.UpvoteCount).ThenByDescending(p => p.LastActivityAt),
-            "hot" => query.SortByDescending(p => p.CommentCount).ThenByDescending(p => p.LastActivityAt),
+            "top" or "mostliked" => query.SortByDescending(p => p.UpvoteCount).ThenByDescending(p => p.LastActivityAt),
+            "hot" or "mostcommented" => query.SortByDescending(p => p.CommentCount).ThenByDescending(p => p.LastActivityAt),
             _ => query.SortByDescending(p => p.IsPinned).ThenByDescending(p => p.LastActivityAt),
         };
 
@@ -65,6 +67,7 @@ public class GetCommunityTopicsQueryHandler
         var userMap = (await users.Find(u => authorIds.Contains(u.Id)).ToListAsync(ct)).ToDictionary(u => u.Id);
         var profileMap = (await profiles.Find(p => authorIds.Contains(p.UserId)).ToListAsync(ct)).ToDictionary(p => p.UserId);
         var gameMap = (await games.Find(g => gameIds.Contains(g.Id)).ToListAsync(ct)).ToDictionary(g => g.Id);
+        var boardMap = new Dictionary<string, CommunityBoard> { [board.Id] = board };
 
         var votedTopicIds = new HashSet<string>();
         if (_currentUser.IsAuthenticated && !string.IsNullOrWhiteSpace(_currentUser.UserId))
@@ -79,7 +82,7 @@ public class GetCommunityTopicsQueryHandler
         }
 
         var response = topicList
-            .Select(topic => CommunityDtoMapper.ToPostResponse(topic, userMap, profileMap, gameMap, votedTopicIds))
+            .Select(topic => CommunityDtoMapper.ToPostResponse(topic, boardMap, userMap, profileMap, gameMap, votedTopicIds))
             .ToList();
 
         return Result<CommunityTopicListResponse>.Success(
@@ -92,22 +95,28 @@ public class GetCommunityTopicsQueryHandler
                 request.Page > 1));
     }
 
-    private static async Task<FilterDefinition<CommunityPost>?> BuildBoardFilterAsync(
-        string boardSlug,
-        IMongoCollection<Game> games,
+    private static async Task<CommunityBoard?> ResolveBoardAsync(
+        IMongoCollection<CommunityBoard> boards,
+        GetCommunityTopicsQuery request,
         CancellationToken ct)
     {
-        if (string.Equals(boardSlug, "general", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(request.BoardId))
+            return await boards.Find(b => b.Id == request.BoardId && !b.IsArchived).FirstOrDefaultAsync(ct);
+        return await boards.Find(b => b.Slug == request.BoardSlug && !b.IsArchived).FirstOrDefaultAsync(ct);
+    }
+
+    private static FilterDefinition<CommunityPost> BuildBoardFilter(CommunityBoard board)
+    {
+        var boardIdFilter = Builders<CommunityPost>.Filter.Eq(p => p.BoardId, board.Id);
+        if (!string.IsNullOrWhiteSpace(board.GameId))
         {
-            return Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.General);
+            var legacyGameFilter = Builders<CommunityPost>.Filter.And(
+                Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.Game),
+                Builders<CommunityPost>.Filter.Eq(p => p.GameId, board.GameId));
+            return Builders<CommunityPost>.Filter.Or(boardIdFilter, legacyGameFilter);
         }
 
-        var game = await games.Find(g => g.Slug == boardSlug && g.IsActive).FirstOrDefaultAsync(ct);
-        if (game is null)
-            return null;
-
-        return Builders<CommunityPost>.Filter.And(
-            Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.Game),
-            Builders<CommunityPost>.Filter.Eq(p => p.GameId, game.Id));
+        var legacyGeneralFilter = Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.General);
+        return Builders<CommunityPost>.Filter.Or(boardIdFilter, legacyGeneralFilter);
     }
 }

@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import type {
+  CommunityBoardResponse,
   CommunityBoardsOverviewResponse,
   CommunityFeedResponse,
   CommunityPostResponse,
@@ -7,7 +8,9 @@ import type {
   CommunityCommentsResponse,
   CommunityTopicDetailResponse,
   CommunityTopicListResponse,
+  CommunityBoardsOverviewParams,
   CreatePostPayload,
+  CreateBoardPayload,
   AddCommentPayload,
   ToggleVotePayload,
 } from './types';
@@ -38,8 +41,17 @@ export async function createCommunityTopic(
   return data;
 }
 
-export async function getCommunityBoardsOverview(): Promise<CommunityBoardsOverviewResponse> {
-  const { data } = await api.get<CommunityBoardsOverviewResponse>('/api/community/boards');
+export async function createCommunityBoard(
+  payload: CreateBoardPayload,
+): Promise<CommunityBoardResponse> {
+  const { data } = await api.post<CommunityBoardResponse>('/api/community/boards', payload);
+  return data;
+}
+
+export async function getCommunityBoardsOverview(
+  params: CommunityBoardsOverviewParams = {},
+): Promise<CommunityBoardsOverviewResponse> {
+  const { data } = await api.get<CommunityBoardsOverviewResponse>('/api/community/boards', { params });
   return data;
 }
 

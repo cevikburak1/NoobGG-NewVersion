@@ -7,6 +7,9 @@ export interface CommunityPostResponse {
   authorId: string;
   authorUsername: string;
   authorAvatarUrl: string | null;
+  boardId: string;
+  boardSlug: string;
+  boardName: string;
   boardType: CommunityBoardType;
   category: string;
   gameId: string | null;
@@ -63,6 +66,7 @@ export interface CommunityBoardResponse {
   slug: string;
   title: string;
   description: string;
+  category: string;
   boardType: CommunityBoardType;
   gameId: string | null;
   gameName: string | null;
@@ -75,8 +79,11 @@ export interface CommunityBoardResponse {
 
 export interface CommunityBoardsOverviewResponse {
   boards: CommunityBoardResponse[];
+  boardCategories: string[];
   trendingTopics: CommunityPostResponse[];
   latestTopics: CommunityPostResponse[];
+  topDiscussedTopics: CommunityPostResponse[];
+  mostLikedTopics: CommunityPostResponse[];
 }
 
 export interface CommunityTopicDetailResponse {
@@ -85,12 +92,28 @@ export interface CommunityTopicDetailResponse {
 }
 
 export interface CreatePostPayload {
-  gameId?: string;
-  boardType?: CommunityBoardType;
+  boardId?: string;
   category?: string;
   title?: string;
   content: string;
   imageUrl?: string;
+}
+
+export interface CommunityBoardsOverviewParams {
+  category?: string;
+  sort?: 'activity' | 'popular' | 'name';
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateBoardPayload {
+  name: string;
+  description: string;
+  category: string;
+  slug?: string;
+  gameId?: string;
+  coverImageUrl?: string;
 }
 
 export interface AddCommentPayload {

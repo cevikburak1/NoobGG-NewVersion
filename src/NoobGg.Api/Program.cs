@@ -53,6 +53,7 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddHostedService<DatabaseMigrationRunner>();
+builder.Services.AddHostedService<CommunityBoardBackfillInitializer>();
 builder.Services.AddHostedService<MongoIndexInitializer>();
 builder.Services.AddHostedService<PlanSeedInitializer>();
 builder.Services.AddHostedService<FakeDataSeeder>();

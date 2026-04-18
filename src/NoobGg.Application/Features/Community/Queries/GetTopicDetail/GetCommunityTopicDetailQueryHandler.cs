@@ -28,19 +28,24 @@ public class GetCommunityTopicDetailQueryHandler
         var profiles = _mongoContext.GetCollection<UserProfile>(CollectionNames.UserProfiles);
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
         var votes = _mongoContext.GetCollection<ContentVote>(CollectionNames.ContentVotes);
+        var boards = _mongoContext.GetCollection<CommunityBoard>(CollectionNames.CommunityBoards);
 
         var topic = await posts.Find(p => p.Id == request.TopicId).FirstOrDefaultAsync(ct);
         if (topic is null)
             return Result<CommunityTopicDetailResponse>.NotFound("Topic not found");
 
-        var relatedFilter = topic.BoardType == CommunityBoardType.General
+        var relatedFilter = !string.IsNullOrWhiteSpace(topic.BoardId)
             ? Builders<CommunityPost>.Filter.And(
-                Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.General),
+                Builders<CommunityPost>.Filter.Eq(p => p.BoardId, topic.BoardId),
                 Builders<CommunityPost>.Filter.Ne(p => p.Id, topic.Id))
-            : Builders<CommunityPost>.Filter.And(
-                Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.Game),
-                Builders<CommunityPost>.Filter.Eq(p => p.GameId, topic.GameId),
-                Builders<CommunityPost>.Filter.Ne(p => p.Id, topic.Id));
+            : topic.BoardType == CommunityBoardType.General
+                ? Builders<CommunityPost>.Filter.And(
+                    Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.General),
+                    Builders<CommunityPost>.Filter.Ne(p => p.Id, topic.Id))
+                : Builders<CommunityPost>.Filter.And(
+                    Builders<CommunityPost>.Filter.Eq(p => p.BoardType, CommunityBoardType.Game),
+                    Builders<CommunityPost>.Filter.Eq(p => p.GameId, topic.GameId),
+                    Builders<CommunityPost>.Filter.Ne(p => p.Id, topic.Id));
 
         var relatedTopics = await posts.Find(relatedFilter)
             .SortByDescending(p => p.LastActivityAt)
@@ -60,6 +65,12 @@ public class GetCommunityTopicDetailQueryHandler
         var userMap = (await users.Find(u => authorIds.Contains(u.Id)).ToListAsync(ct)).ToDictionary(u => u.Id);
         var profileMap = (await profiles.Find(p => authorIds.Contains(p.UserId)).ToListAsync(ct)).ToDictionary(p => p.UserId);
         var gameMap = (await games.Find(g => gameIds.Contains(g.Id)).ToListAsync(ct)).ToDictionary(g => g.Id);
+        var boardIds = allTopics
+            .Select(p => p.BoardId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList()!;
+        var boardMap = (await boards.Find(b => boardIds.Contains(b.Id)).ToListAsync(ct)).ToDictionary(b => b.Id);
 
         var votedTopicIds = new HashSet<string>();
         if (_currentUser.IsAuthenticated && !string.IsNullOrWhiteSpace(_currentUser.UserId))
@@ -73,9 +84,9 @@ public class GetCommunityTopicDetailQueryHandler
             votedTopicIds = userVotes.Select(v => v.TargetId).ToHashSet();
         }
 
-        var topicResponse = CommunityDtoMapper.ToPostResponse(topic, userMap, profileMap, gameMap, votedTopicIds);
+        var topicResponse = CommunityDtoMapper.ToPostResponse(topic, boardMap, userMap, profileMap, gameMap, votedTopicIds);
         var relatedResponses = relatedTopics
-            .Select(item => CommunityDtoMapper.ToPostResponse(item, userMap, profileMap, gameMap, votedTopicIds))
+            .Select(item => CommunityDtoMapper.ToPostResponse(item, boardMap, userMap, profileMap, gameMap, votedTopicIds))
             .ToList();
 
         return Result<CommunityTopicDetailResponse>.Success(

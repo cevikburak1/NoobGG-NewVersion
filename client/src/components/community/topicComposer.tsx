@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Button, Input, Textarea } from '@/components/ui';
+import { Button, Input, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/ui/toast';
+import { useGameBrowse } from '@/features/games/hooks';
 import { useCreateTopic } from '@/features/community/hooks';
-import type { CommunityBoardType } from '@/features/community/types';
+import type { CommunityBoardResponse } from '@/features/community/types';
 
 const GENERAL_CATEGORIES = ['Looking for Team', 'Debate', 'Strategy', 'Highlights'];
 const GAME_CATEGORIES = ['Meta', 'Looking for Team', 'Patch Talk', 'Strategy'];
@@ -12,26 +13,36 @@ const TITLE_MAX = 140;
 const CONTENT_MAX = 1000;
 
 interface TopicComposerProps {
-  boardType: CommunityBoardType;
-  gameId?: string | null;
-  boardName: string;
+  boardId: string;
+  boardCategory?: string;
+  boards?: CommunityBoardResponse[];
 }
 
-export function TopicComposer({ boardType, gameId, boardName }: TopicComposerProps) {
+export function TopicComposer({ boardId, boardCategory, boards = [] }: TopicComposerProps) {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const createTopic = useCreateTopic();
+  const { data: gamesPage } = useGameBrowse({ page: 1, pageSize: 80 });
   const categories = useMemo(
-    () => (boardType === 'General' ? GENERAL_CATEGORIES : GAME_CATEGORIES),
-    [boardType],
+    () => (boardCategory?.toLowerCase() === 'game' ? GAME_CATEGORIES : GENERAL_CATEGORIES),
+    [boardCategory],
   );
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState(categories[0]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [gameId, setGameId] = useState('');
 
   useEffect(() => {
     setCategory(categories[0]);
   }, [categories]);
+
+  const gameOptions = useMemo(() => {
+    const items = gamesPage?.items ?? [];
+    return items.map((g) => ({ value: g.id, label: g.name }));
+  }, [gamesPage]);
+
+  const resolveBoardIdForGame = (gid: string) => boards.find((b) => b.gameId === gid)?.id;
 
   const canSubmit =
     title.trim().length > 2 &&
@@ -42,19 +53,36 @@ export function TopicComposer({ boardType, gameId, boardName }: TopicComposerPro
   const handleSubmit = () => {
     if (!canSubmit) return;
 
+    let postBoardId = boardId;
+    if (gameId) {
+      const mapped = resolveBoardIdForGame(gameId);
+      if (!mapped) {
+        addToast({
+          title: 'No board for this game',
+          message: 'Create a game-tied board from Community home first, or clear the game and post here.',
+          type: 'error',
+        });
+        return;
+      }
+      postBoardId = mapped;
+    }
+
+    const trimmedImage = imageUrl.trim();
     createTopic.mutate(
       {
         title: title.trim(),
         content: content.trim(),
         category,
-        boardType,
-        gameId: gameId ?? undefined,
+        boardId: postBoardId,
+        imageUrl: trimmedImage || undefined,
       },
       {
         onSuccess: (data) => {
           addToast({ title: 'Topic published!', message: 'Your new thread is live.', type: 'success' });
           setTitle('');
           setContent('');
+          setImageUrl('');
+          setGameId('');
           setCategory(categories[0]);
           if (data?.id) {
             navigate(`/community/topics/${data.id}`);
@@ -67,6 +95,8 @@ export function TopicComposer({ boardType, gameId, boardName }: TopicComposerPro
     );
   };
 
+  const previewBg = imageUrl.trim() || undefined;
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 16 }}
@@ -74,22 +104,23 @@ export function TopicComposer({ boardType, gameId, boardName }: TopicComposerPro
       transition={{ delay: 0.12 }}
       className="relative overflow-hidden rounded-[28px] border border-border/50 bg-surface/70 p-5 backdrop-blur-md sm:p-6"
     >
+      {previewBg ? (
+        <div
+          className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.18]"
+          style={{ backgroundImage: `url(${previewBg})` }}
+        />
+      ) : null}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(6,214,160,0.08),transparent_35%)]" />
       <div className="relative">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent/90">
-              Open a new topic
+              New topic
             </p>
-            <h2
-              className="mt-2 text-2xl font-bold tracking-[-0.04em] text-foreground"
-              style={{ fontFamily: "'Bricolage Grotesque', 'Plus Jakarta Sans', var(--font-sans)" }}
-            >
-              Start the next conversation in {boardName}
-            </h2>
           </div>
-          <p className="max-w-xs text-xs leading-6 text-foreground-subtle">
-            Mention players with <span className="font-semibold text-primary">@username</span> to notify them directly.
+          <p className="max-w-md text-xs leading-relaxed text-foreground-subtle md:text-right">
+            Optional: tag someone with <span className="font-semibold text-foreground-muted">@username</span>
+            {' '}— only if you want to notify them; not required to post.
           </p>
         </div>
 
@@ -105,6 +136,16 @@ export function TopicComposer({ boardType, gameId, boardName }: TopicComposerPro
               {title.trim().length}/{TITLE_MAX}
             </p>
           </div>
+
+          {gameOptions.length > 0 ? (
+            <Select
+              label="Game (optional)"
+              placeholder="Post in this board only"
+              value={gameId}
+              onChange={(e) => setGameId(e.target.value)}
+              options={gameOptions}
+            />
+          ) : null}
 
           <div className="flex flex-wrap gap-2">
             {categories.map((item) => (
@@ -124,10 +165,19 @@ export function TopicComposer({ boardType, gameId, boardName }: TopicComposerPro
           </div>
 
           <div>
+            <Input
+              value={imageUrl}
+              onChange={(event) => setImageUrl(event.target.value.slice(0, 600))}
+              placeholder="Cover image URL (optional)"
+              className="border-border/60 bg-background/60"
+            />
+          </div>
+
+          <div>
             <Textarea
               value={content}
               onChange={(event) => setContent(event.target.value.slice(0, CONTENT_MAX))}
-              placeholder="Drop the full take: the patch, the roster need, the strategy question, or the thing you want the board to react to."
+              placeholder="Write your post…"
               rows={5}
               className="border-border/60 bg-background/60"
             />

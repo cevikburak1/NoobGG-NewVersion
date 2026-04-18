@@ -9,6 +9,9 @@ public record CommunityPostResponse(
     string AuthorId,
     string AuthorUsername,
     string? AuthorAvatarUrl,
+    string BoardId,
+    string BoardSlug,
+    string BoardName,
     CommunityBoardType BoardType,
     string Category,
     string? GameId,
@@ -64,6 +67,7 @@ public record CommunityBoardResponse(
     string Slug,
     string Title,
     string Description,
+    string Category,
     CommunityBoardType BoardType,
     string? GameId,
     string? GameName,
@@ -75,5 +79,8 @@ public record CommunityBoardResponse(
 
 public record CommunityBoardsOverviewResponse(
     List<CommunityBoardResponse> Boards,
+    List<string> BoardCategories,
     List<CommunityPostResponse> TrendingTopics,
-    List<CommunityPostResponse> LatestTopics);
+    List<CommunityPostResponse> LatestTopics,
+    List<CommunityPostResponse> TopDiscussedTopics,
+    List<CommunityPostResponse> MostLikedTopics);

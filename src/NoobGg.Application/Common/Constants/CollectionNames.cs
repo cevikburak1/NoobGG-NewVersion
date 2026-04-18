@@ -33,6 +33,7 @@ public static class CollectionNames
     public const string DemoSeedMarkers = "demoSeedMarkers";
 
     public const string CommunityPosts = "communityPosts";
+    public const string CommunityBoards = "communityBoards";
     public const string CommunityComments = "communityComments";
     public const string Guides = "guides";
     public const string ContentVotes = "contentVotes";

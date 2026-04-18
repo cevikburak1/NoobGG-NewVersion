@@ -6,6 +6,7 @@ internal static class CommunityDtoMapper
 {
     public static CommunityPostResponse ToPostResponse(
         CommunityPost post,
+        Dictionary<string, CommunityBoard> boardMap,
         Dictionary<string, User> userMap,
         Dictionary<string, UserProfile> profileMap,
         Dictionary<string, Game> gameMap,
@@ -20,6 +21,8 @@ internal static class CommunityDtoMapper
 
         userMap.TryGetValue(post.AuthorId, out var author);
         profileMap.TryGetValue(post.AuthorId, out var profile);
+        var boardId = post.BoardId ?? "general";
+        boardMap.TryGetValue(boardId, out var board);
 
         Game? game = null;
         if (!string.IsNullOrWhiteSpace(post.GameId))
@@ -32,6 +35,9 @@ internal static class CommunityDtoMapper
             post.AuthorId,
             author?.Username ?? "Unknown",
             profile?.AvatarUrl,
+            board?.Id ?? boardId,
+            board?.Slug ?? "general",
+            board?.Name ?? "General Players Forum",
             post.BoardType,
             post.Category,
             post.GameId,

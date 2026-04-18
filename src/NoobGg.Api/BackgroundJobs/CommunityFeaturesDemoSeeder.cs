@@ -46,6 +46,7 @@ public class CommunityFeaturesDemoSeeder : IHostedService
         try
         {
             var markers = _mongo.Database.GetCollection<BsonDocument>(CollectionNames.DemoSeedMarkers);
+            var boardsCol = _mongo.GetCollection<CommunityBoard>(CollectionNames.CommunityBoards);
             var postsCol = _mongo.GetCollection<CommunityPost>(CollectionNames.CommunityPosts);
             var force = IsForceEnabled();
             if (force)
@@ -98,6 +99,36 @@ public class CommunityFeaturesDemoSeeder : IHostedService
 
             var shuffledUsers = userIds.OrderBy(_ => Rng.Next()).ToList();
             var gameIds = games.Select(g => g.Id).ToList();
+            var defaultBoardOwnerId = shuffledUsers[0];
+
+            var generalBoard = await EnsureBoardAsync(
+                boardsCol,
+                "general",
+                "General Players Forum",
+                "Matchups, squad building, hot takes, roster calls, and everything players want to debate outside a single game.",
+                "General",
+                defaultBoardOwnerId,
+                null,
+                "from-primary/35 via-primary/10 to-transparent",
+                null,
+                ct);
+
+            var gameBoardMap = new Dictionary<string, CommunityBoard>();
+            foreach (var game in games)
+            {
+                var gameBoard = await EnsureBoardAsync(
+                    boardsCol,
+                    game.Slug,
+                    game.Name,
+                    BuildGameBoardDescription(game),
+                    "Game",
+                    defaultBoardOwnerId,
+                    game.Id,
+                    "from-accent/30 via-info/10 to-transparent",
+                    game.BackgroundImageUrl,
+                    ct);
+                gameBoardMap[game.Id] = gameBoard;
+            }
 
             var generalTopics = new (string title, string body, string category)[]
             {
@@ -137,6 +168,7 @@ public class CommunityFeaturesDemoSeeder : IHostedService
                 {
                     Id = Guid.NewGuid().ToString(),
                     AuthorId = author,
+                    BoardId = generalBoard.Id,
                     BoardType = CommunityBoardType.General,
                     Category = cat,
                     Title = title,
@@ -161,11 +193,14 @@ public class CommunityFeaturesDemoSeeder : IHostedService
                 var created = DateTime.UtcNow.AddHours(-hoursAgo);
                 var lastActivity = created.AddMinutes(Rng.Next(10, hoursAgo * 25));
                 if (lastActivity > DateTime.UtcNow) lastActivity = DateTime.UtcNow.AddMinutes(-Rng.Next(1, 30));
+                if (!gameBoardMap.TryGetValue(gid, out var gameBoard))
+                    continue;
 
                 posts.Add(new CommunityPost
                 {
                     Id = Guid.NewGuid().ToString(),
                     AuthorId = author,
+                    BoardId = gameBoard.Id,
                     BoardType = CommunityBoardType.Game,
                     Category = cat,
                     Title = title,
@@ -517,6 +552,48 @@ public class CommunityFeaturesDemoSeeder : IHostedService
     private bool IsForceEnabled() =>
         string.Equals(Environment.GetEnvironmentVariable("NOOBGG_COMMUNITY_SEED_FORCE"), "1", StringComparison.OrdinalIgnoreCase)
         || _configuration.GetValue("CommunityFeaturesSeed:Force", false);
+
+    private static async Task<CommunityBoard> EnsureBoardAsync(
+        IMongoCollection<CommunityBoard> boards,
+        string slug,
+        string name,
+        string description,
+        string category,
+        string createdByUserId,
+        string? gameId,
+        string accent,
+        string? coverImageUrl,
+        CancellationToken ct)
+    {
+        var existing = await boards.Find(b => b.Slug == slug).FirstOrDefaultAsync(ct);
+        if (existing is not null)
+            return existing;
+
+        var board = new CommunityBoard
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = name,
+            Slug = slug,
+            Description = description,
+            Category = category,
+            CreatedByUserId = createdByUserId,
+            GameId = gameId,
+            Accent = accent,
+            CoverImageUrl = coverImageUrl,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        await boards.InsertOneAsync(board, cancellationToken: ct);
+        return board;
+    }
+
+    private static string BuildGameBoardDescription(Game game)
+    {
+        var genre = game.Genres.FirstOrDefault();
+        return genre is null
+            ? "Strategy, meta shifts, squad requests, and patch reactions for this game."
+            : $"{genre} tactics, player requests, patch reactions, and community intel for this game.";
+    }
 
     private static string BuildSlug(string title)
     {

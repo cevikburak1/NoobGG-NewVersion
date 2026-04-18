@@ -27,9 +27,7 @@ export default function CommunityTopicDetailPage() {
     );
   }
 
-  const boardLink = data.topic.gameSlug
-    ? `/community/boards/${data.topic.gameSlug}`
-    : '/community/boards/general';
+  const boardLink = `/community/boards/${data.topic.boardSlug}`;
 
   return (
     <AnimatedPage>
@@ -63,7 +61,7 @@ export default function CommunityTopicDetailPage() {
               <div className="mt-4 grid gap-3">
                 <SnapshotRow label="Replies" value={String(data.topic.commentCount)} />
                 <SnapshotRow label="Upvotes" value={String(data.topic.upvoteCount)} />
-                <SnapshotRow label="Board" value={data.topic.gameName ?? 'General'} />
+                <SnapshotRow label="Board" value={data.topic.boardName} />
               </div>
             </motion.div>
 

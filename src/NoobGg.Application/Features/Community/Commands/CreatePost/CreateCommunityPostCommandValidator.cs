@@ -1,6 +1,4 @@
 using FluentValidation;
-using NoobGg.Domain.Enums;
-
 namespace NoobGg.Application.Features.Community.Commands.CreatePost;
 
 public class CreateCommunityPostCommandValidator : AbstractValidator<CreateCommunityPostCommand>
@@ -18,8 +16,7 @@ public class CreateCommunityPostCommandValidator : AbstractValidator<CreateCommu
             .NotEmpty().WithMessage("Category is required")
             .MaximumLength(40).WithMessage("Category cannot exceed 40 characters");
 
-        RuleFor(x => x.GameId)
-            .NotEmpty().WithMessage("GameId is required for game boards")
-            .When(x => x.BoardType == CommunityBoardType.Game);
+        RuleFor(x => x.BoardId)
+            .NotEmpty().WithMessage("BoardId is required");
     }
 }

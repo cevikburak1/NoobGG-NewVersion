@@ -6,6 +6,7 @@ import { UserAvatar } from '@/components/common/userAvatar';
 import { UpvoteButton } from './upvoteButton';
 import {
   useCommunityFeed,
+  useCommunityBoardsOverview,
   useCreatePost,
   usePostComments,
   useAddComment,
@@ -34,13 +35,15 @@ interface CommunityFeedProps {
 export function CommunityFeed({ gameId }: CommunityFeedProps) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useCommunityFeed(gameId, page);
+  const { data: boardsData } = useCommunityBoardsOverview({ page: 1, pageSize: 100 });
   const createPost = useCreatePost();
   const [postContent, setPostContent] = useState('');
+  const boardId = boardsData?.boards.find((board) => board.gameId === gameId)?.id;
 
   const handleSubmitPost = () => {
     const trimmed = postContent.trim();
-    if (!trimmed) return;
-    createPost.mutate({ gameId, content: trimmed }, {
+    if (!trimmed || !boardId) return;
+    createPost.mutate({ boardId, content: trimmed }, {
       onSuccess: () => setPostContent(''),
     });
   };
@@ -64,7 +67,7 @@ export function CommunityFeed({ gameId }: CommunityFeedProps) {
           <Button
             size="sm"
             onClick={handleSubmitPost}
-            disabled={!postContent.trim()}
+            disabled={!postContent.trim() || !boardId}
             isLoading={createPost.isPending}
           >
             Post

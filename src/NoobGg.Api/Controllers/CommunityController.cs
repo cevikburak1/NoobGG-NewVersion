@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NoobGg.Application.Features.Community.Commands.AddComment;
+using NoobGg.Application.Features.Community.Commands.CreateBoard;
 using NoobGg.Application.Features.Community.Commands.CreatePost;
 using NoobGg.Application.Features.Community.Commands.ToggleVote;
 using NoobGg.Application.Features.Community.Queries.GetBoards;
@@ -16,15 +17,28 @@ namespace NoobGg.Api.Controllers;
 public class CommunityController : ApiControllerBase
 {
     [HttpGet("boards")]
-    public async Task<IActionResult> GetBoards()
+    public async Task<IActionResult> GetBoards(
+        [FromQuery] string? category = null,
+        [FromQuery] string? sort = null,
+        [FromQuery(Name = "q")] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 24)
     {
-        var result = await Mediator.Send(new GetCommunityBoardsQuery());
+        var result = await Mediator.Send(new GetCommunityBoardsQuery
+        {
+            Category = category,
+            Sort = sort,
+            Search = search,
+            Page = Math.Clamp(page, 1, 2000),
+            PageSize = Math.Clamp(pageSize, 1, 100)
+        });
         return HandleResult(result);
     }
 
     [HttpGet("topics")]
     public async Task<IActionResult> GetTopics(
         [FromQuery] string board = "general",
+        [FromQuery] string? boardId = null,
         [FromQuery] string sort = "latest",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
@@ -32,6 +46,7 @@ public class CommunityController : ApiControllerBase
         var result = await Mediator.Send(new GetCommunityTopicsQuery
         {
             BoardSlug = board,
+            BoardId = boardId,
             Sort = sort,
             Page = Math.Clamp(page, 1, 1000),
             PageSize = Math.Clamp(pageSize, 1, 50)
@@ -63,6 +78,13 @@ public class CommunityController : ApiControllerBase
 
     [HttpPost("topics")]
     public async Task<IActionResult> CreateTopic([FromBody] CreateCommunityPostCommand command)
+    {
+        var result = await Mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    [HttpPost("boards")]
+    public async Task<IActionResult> CreateBoard([FromBody] CreateCommunityBoardCommand command)
     {
         var result = await Mediator.Send(command);
         return HandleResult(result);

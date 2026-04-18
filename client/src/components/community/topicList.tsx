@@ -13,16 +13,25 @@ interface TopicListProps {
 export function TopicList({ data, onPageChange }: TopicListProps) {
   return (
     <div className="space-y-4">
-      {data.topics.map((topic, index) => (
-        <motion.div
-          key={topic.id}
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.04 }}
-        >
-          <TopicCard topic={topic} />
-        </motion.div>
-      ))}
+      {data.topics.length === 0 ? (
+        <div className="rounded-[28px] border border-border/45 bg-surface/50 p-10 text-center">
+          <p className="text-sm font-medium text-foreground">No topics in this board yet</p>
+          <p className="mt-2 text-sm text-foreground-muted">
+            Use the form above to publish the first thread — no @mention required.
+          </p>
+        </div>
+      ) : (
+        data.topics.map((topic, index) => (
+          <motion.div
+            key={topic.id}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04 }}
+          >
+            <TopicCard topic={topic} />
+          </motion.div>
+        ))
+      )}
 
       <TopicPagination data={data} onPageChange={onPageChange} />
     </div>
@@ -38,11 +47,9 @@ function TopicCard({ topic }: { topic: CommunityPostResponse }) {
           <div className="flex flex-wrap items-center gap-2">
             {topic.isPinned ? <Badge variant="accent">Pinned</Badge> : null}
             <Badge variant="default">{topic.category}</Badge>
-            {topic.gameName ? (
-              <span className="text-xs font-medium uppercase tracking-[0.18em] text-foreground-subtle">
-                {topic.gameName}
-              </span>
-            ) : null}
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-foreground-subtle">
+              {topic.boardName}
+            </span>
           </div>
 
           <h3

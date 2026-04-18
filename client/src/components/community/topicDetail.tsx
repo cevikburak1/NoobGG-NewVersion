@@ -13,18 +13,12 @@ export function TopicDetail({ topic }: { topic: CommunityPostResponse }) {
       className="overflow-hidden rounded-[28px] border border-border/50 bg-surface/75 p-6 backdrop-blur-md sm:p-7"
     >
       <div className="flex flex-wrap items-center gap-2">
-        {topic.gameName ? (
-          <Link
-            to={`/community/boards/${topic.gameSlug ?? topic.gameId}`}
-            className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent/90"
-          >
-            {topic.gameName}
-          </Link>
-        ) : (
-          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent/90">
-            General Board
-          </span>
-        )}
+        <Link
+          to={`/community/boards/${topic.boardSlug}`}
+          className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent/90"
+        >
+          {topic.boardName}
+        </Link>
         <Badge variant="default">{topic.category}</Badge>
         {topic.isPinned ? <Badge variant="accent">Pinned</Badge> : null}
       </div>

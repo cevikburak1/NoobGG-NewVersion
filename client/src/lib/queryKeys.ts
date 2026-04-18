@@ -4,7 +4,7 @@ import type { PlayerDiscoverParams } from '@/features/users/types';
 
 export const queryKeys = {
   community: {
-    boards: () => ['community', 'boards'] as const,
+    boards: (params?: unknown) => ['community', 'boards', params] as const,
     topics: (board: string, sort = 'latest', page = 1, pageSize = 12) =>
       ['community', 'topics', board, sort, page, pageSize] as const,
     topicDetail: (topicId: string) => ['community', 'topic', topicId] as const,

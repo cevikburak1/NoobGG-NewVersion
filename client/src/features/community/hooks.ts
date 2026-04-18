@@ -7,13 +7,20 @@ import {
   getCommunityTopicDetail,
   getCommunityTopics,
   createCommunityPost,
+  createCommunityBoard,
   createCommunityTopic,
   getPostComments,
   getTopicComments,
   addComment,
   toggleVote,
 } from './api';
-import type { CreatePostPayload, AddCommentPayload, ToggleVotePayload } from './types';
+import type {
+  CreatePostPayload,
+  CreateBoardPayload,
+  AddCommentPayload,
+  ToggleVotePayload,
+  CommunityBoardsOverviewParams,
+} from './types';
 
 export function useCommunityFeed(gameId: string | undefined, page = 1) {
   return useQuery({
@@ -23,10 +30,10 @@ export function useCommunityFeed(gameId: string | undefined, page = 1) {
   });
 }
 
-export function useCommunityBoardsOverview() {
+export function useCommunityBoardsOverview(params: CommunityBoardsOverviewParams = {}) {
   return useQuery({
-    queryKey: queryKeys.community.boards(),
-    queryFn: getCommunityBoardsOverview,
+    queryKey: queryKeys.community.boards(params),
+    queryFn: () => getCommunityBoardsOverview(params),
   });
 }
 
@@ -60,6 +67,16 @@ export function useCreateTopic() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreatePostPayload) => createCommunityTopic(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['community'] });
+    },
+  });
+}
+
+export function useCreateBoard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateBoardPayload) => createCommunityBoard(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['community'] });
     },

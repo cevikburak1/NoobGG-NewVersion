@@ -62,6 +62,7 @@ public class MongoIndexInitializer : IHostedService
         await CreateMatchResultIndexes(ct);
         await CreateEloIndexes(ct);
         await CreateMatchQueueIndexes(ct);
+        await CreateCommunityBoardIndexes(ct);
         await CreateCommunityPostIndexes(ct);
         await CreateCommunityCommentIndexes(ct);
         await CreateGuideIndexes(ct);
@@ -605,6 +606,22 @@ public class MongoIndexInitializer : IHostedService
         ], ct);
     }
 
+    private async Task CreateCommunityBoardIndexes(CancellationToken ct)
+    {
+        var col = _mongoContext.GetCollection<CommunityBoard>(CollectionNames.CommunityBoards);
+        await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<CommunityBoard>(
+                Builders<CommunityBoard>.IndexKeys.Ascending(b => b.Slug),
+                new CreateIndexOptions { Unique = true, Name = "idx_slug_unique" }),
+            new CreateIndexModel<CommunityBoard>(
+                Builders<CommunityBoard>.IndexKeys.Ascending(b => b.Category),
+                new CreateIndexOptions { Name = "idx_category" }),
+            new CreateIndexModel<CommunityBoard>(
+                Builders<CommunityBoard>.IndexKeys.Ascending(b => b.CreatedByUserId).Descending(b => b.CreatedAt),
+                new CreateIndexOptions { Name = "idx_createdBy_createdAt" })
+        ], ct);
+    }
+
     private async Task CreateCommunityPostIndexes(CancellationToken ct)
     {
         var col = _mongoContext.GetCollection<CommunityPost>(CollectionNames.CommunityPosts);
@@ -626,7 +643,13 @@ public class MongoIndexInitializer : IHostedService
                 new CreateIndexOptions { Name = "idx_slug" }),
             new CreateIndexModel<CommunityPost>(
                 Builders<CommunityPost>.IndexKeys.Ascending(p => p.AuthorId),
-                new CreateIndexOptions { Name = "idx_authorId" })
+                new CreateIndexOptions { Name = "idx_authorId" }),
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys.Ascending(p => p.BoardId).Descending(p => p.LastActivityAt),
+                new CreateIndexOptions { Name = "idx_boardId_lastActivityAt" }),
+            new CreateIndexModel<CommunityPost>(
+                Builders<CommunityPost>.IndexKeys.Ascending(p => p.BoardId).Descending(p => p.CommentCount).Descending(p => p.UpvoteCount),
+                new CreateIndexOptions { Name = "idx_boardId_comment_upvote" })
         ], ct);
     }
 
