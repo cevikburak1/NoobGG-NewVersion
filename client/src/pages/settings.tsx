@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Toggle } from '@/components/ui/toggle';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/usePagination';
 import { EmptyState } from '@/components/common/emptyState';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { useToast } from '@/components/ui/toast';
@@ -285,6 +287,7 @@ function NotificationsSection({ settings }: { settings: UserSettingsResponse }) 
 
 function BlockedUsersSection() {
   const { data: blockedUsers, isLoading, isError } = useBlockedUsers();
+  const blockedPage = usePagination(blockedUsers ?? [], 10);
   const unblock = useUnblockUser();
   const { addToast } = useToast();
 
@@ -330,7 +333,7 @@ function BlockedUsersSection() {
       </CardHeader>
       <CardContent>
         <div className="divide-y divide-border">
-          {blockedUsers.map((user) => (
+          {blockedPage.items.map((user) => (
             <div key={user.blockId} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
               <div className="flex items-center gap-3">
                 <UserAvatar username={user.username} avatarUrl={user.avatarUrl} size="sm" />
@@ -352,6 +355,8 @@ function BlockedUsersSection() {
             </div>
           ))}
         </div>
+        <Pagination className="mt-3" page={blockedPage.page} pageSize={blockedPage.pageSize}
+          totalItems={blockedPage.totalItems} onPageChange={blockedPage.setPage} />
       </CardContent>
     </Card>
   );

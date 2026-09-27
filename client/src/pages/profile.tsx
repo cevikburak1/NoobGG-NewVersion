@@ -66,6 +66,12 @@ export default function ProfilePage() {
     }
   }, [gamesPage, gamesTotalPages]);
 
+  const handleUnblock = async () => {
+    if (!userId) return;
+    await unblockUser.mutateAsync(userId);
+    refetch();
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -122,12 +128,6 @@ export default function ProfilePage() {
   const handleBlock = async () => {
     if (!userId) return;
     await blockUser.mutateAsync(userId);
-    refetch();
-  };
-
-  const handleUnblock = async () => {
-    if (!userId) return;
-    await unblockUser.mutateAsync(userId);
     refetch();
   };
 

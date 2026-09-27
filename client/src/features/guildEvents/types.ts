@@ -10,6 +10,8 @@ export interface GuildEventResponse {
   gameId: string | null;
   tournamentId: string | null;
   createdAt: string;
+  goingCount: number;
+  isGoing: boolean;
 }
 
 export interface GuildEventListResponse {

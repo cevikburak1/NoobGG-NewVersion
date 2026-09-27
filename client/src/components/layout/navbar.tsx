@@ -6,8 +6,11 @@ import { Button } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { useNotificationContext } from '@/providers/notificationProvider';
 import { useConversations } from '@/features/dm/hooks';
+import { useTranslation } from 'react-i18next';
+import { LanguageToggle } from './languageToggle';
 
 export function Navbar() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const isAuth = useAuthStore((s) => s.isAuthenticated());
   const logout = useAuthStore((s) => s.logout);
@@ -43,13 +46,14 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
-          <NavLink to="/rooms">Rooms</NavLink>
-          <NavLink to="/discover">Discover</NavLink>
-          <NavLink to="/friends">Friends</NavLink>
-          <NavLink to="/subscriptions">Plans</NavLink>
+          <NavLink to="/rooms">{t('Rooms')}</NavLink>
+          <NavLink to="/discover">{t('Discover')}</NavLink>
+          <NavLink to="/friends">{t('Friends')}</NavLink>
+          <NavLink to="/subscriptions">{t('Plans')}</NavLink>
         </nav>
 
         <div className="flex items-center gap-3">
+          <LanguageToggle />
           {isAuth ? (
             <>
               <Link to="/notifications" className="relative p-2 text-foreground-muted hover:text-foreground transition-colors">
@@ -88,37 +92,37 @@ export function Navbar() {
                           icon={<ProfileIcon />}
                           onClick={() => { setDropdownOpen(false); navigate(`/profile/${user?.id}`); }}
                         >
-                          My Profile
+                          {t('My Profile')}
                         </DropdownItem>
                         <DropdownItem
                           icon={<EditIcon />}
                           onClick={() => { setDropdownOpen(false); navigate('/profile/edit'); }}
                         >
-                          Edit Profile
+                          {t('Edit Profile')}
                         </DropdownItem>
                         <DropdownItem
                           icon={<GamepadIcon />}
                           onClick={() => { setDropdownOpen(false); navigate('/profile/games'); }}
                         >
-                          Game Profiles
+                          {t('Game Profiles')}
                         </DropdownItem>
                         <DropdownItem
                           icon={<MessagesDropdownIcon />}
                           onClick={() => { setDropdownOpen(false); navigate('/messages'); }}
                           badge={totalDmUnread}
                         >
-                          Messages
+                          {t('Messages')}
                         </DropdownItem>
                         <DropdownItem
                           icon={<SettingsSmIcon />}
                           onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
                         >
-                          Settings
+                          {t('Settings')}
                         </DropdownItem>
                       </div>
                       <div className="border-t border-border py-1">
                         <DropdownItem icon={<LogoutIcon />} onClick={handleLogout} danger>
-                          Logout
+                          {t('Logout')}
                         </DropdownItem>
                       </div>
                     </motion.div>
@@ -129,10 +133,10 @@ export function Navbar() {
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost" size="sm">Sign in</Button>
+                <Button variant="ghost" size="sm">{t('Sign in')}</Button>
               </Link>
               <Link to="/register">
-                <Button size="sm">Get Started</Button>
+                <Button size="sm">{t('Get Started')}</Button>
               </Link>
             </>
           )}

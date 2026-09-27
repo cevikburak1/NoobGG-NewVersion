@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,12 +12,14 @@ import {
 } from '@/features/guilds/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { useDebounce } from '@/hooks/useDebounce';
+import { usePagination } from '@/hooks/usePagination';
 import { discoverPlayers } from '@/features/users/api';
 import type { GuildMemberResponse, GuildGameInfo } from '@/features/guilds/types';
 import {
-  Button, Badge, Modal, Input, AnimatedPage, Spinner, staggerContainer, staggerItem,
+  Button, Badge, Modal, Input, AnimatedPage, Spinner, Pagination, staggerContainer, staggerItem,
 } from '@/components/ui';
 import { UserAvatar } from '@/components/common/userAvatar';
+import { GuildChat } from '@/components/guild/guildChat';
 
 export default function GuildDetailPage() {
   const { guildId } = useParams<{ guildId: string }>();
@@ -25,6 +28,7 @@ export default function GuildDetailPage() {
   const isAuth = useAuthStore((s) => s.isAuthenticated());
 
   const { data: guild, isLoading } = useGuildDetail(guildId);
+  const memberPage = usePagination(guild?.members ?? [], 8, guildId);
   const joinGuild = useJoinGuild();
   const leaveGuild = useLeaveGuild();
   const kickMember = useKickGuildMember();
@@ -203,7 +207,7 @@ export default function GuildDetailPage() {
               animate="show"
               className="space-y-2"
             >
-              {guild.members.map((member) => (
+              {memberPage.items.map((member) => (
                 <MemberRow
                   key={member.userId}
                   member={member}
@@ -215,8 +219,12 @@ export default function GuildDetailPage() {
                 />
               ))}
             </motion.div>
+            <Pagination className="mt-4" page={memberPage.page} pageSize={memberPage.pageSize}
+              totalItems={memberPage.totalItems} onPageChange={memberPage.setPage} />
           </motion.div>
         </div>
+
+        {isMember && guildId && <GuildChat guildId={guildId} />}
 
         {(joinGuild.error || leaveGuild.error) && (
           <motion.p
@@ -224,7 +232,9 @@ export default function GuildDetailPage() {
             animate={{ opacity: 1 }}
             className="rounded-md bg-danger/10 px-4 py-3 text-sm text-danger"
           >
-            {((joinGuild.error || leaveGuild.error) as any)?.response?.data?.title ?? 'An error occurred'}
+            {axios.isAxiosError(joinGuild.error || leaveGuild.error)
+              ? ((joinGuild.error || leaveGuild.error) as import('axios').AxiosError<{ title?: string }>).response?.data?.title ?? 'An error occurred'
+              : 'An error occurred'}
           </motion.p>
         )}
 
@@ -265,12 +275,6 @@ function GameCard({ game }: { game: GuildGameInfo }) {
     </Link>
   );
 }
-
-const roleColors: Record<string, string> = {
-  Owner: 'text-warning',
-  Admin: 'text-primary',
-  Member: 'text-foreground-muted',
-};
 
 const roleBadgeVariant: Record<string, 'warning' | 'primary' | 'default'> = {
   Owner: 'warning',

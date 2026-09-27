@@ -76,6 +76,7 @@ public static class DependencyInjection
     private static IServiceCollection AddSubscriptionServices(this IServiceCollection services)
     {
         services.AddScoped<IEntitlementService, EntitlementService>();
+        services.AddSingleton<IPaymentProvider, UnconfiguredPaymentProvider>();
         return services;
     }
 

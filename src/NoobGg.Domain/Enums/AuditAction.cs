@@ -13,5 +13,7 @@ public enum AuditAction
     UserBlocked,
     UserUnblocked,
     UserMuted,
-    UserUnmuted
+    UserUnmuted,
+    UserWarned,
+    UserSuspended
 }

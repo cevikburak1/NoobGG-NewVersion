@@ -11,6 +11,8 @@ public record GuildEventResponse(
     DateTime EndsAt,
     string? GameId,
     string? TournamentId,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int GoingCount,
+    bool IsGoing);
 
 public record GuildEventListResponse(List<GuildEventResponse> Events, int TotalCount);

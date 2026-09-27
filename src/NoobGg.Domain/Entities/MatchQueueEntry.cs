@@ -13,5 +13,6 @@ public class MatchQueueEntry : BaseEntity
     public MatchQueueEntryStatus Status { get; set; } = MatchQueueEntryStatus.Searching;
     public string? MatchedRoomId { get; set; }
     public string? MatchedWithUserId { get; set; }
+    public string? MatchClaimId { get; set; }
     public DateTime ExpiresAt { get; set; }
 }

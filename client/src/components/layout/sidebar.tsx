@@ -4,6 +4,7 @@ import { useConversations } from '@/features/dm/hooks';
 import { usePendingRequests } from '@/features/friends/hooks';
 import { useNotificationContext } from '@/providers/notificationProvider';
 import { cn } from '@/lib/cn';
+import { useTranslation } from 'react-i18next';
 
 const navItems = [
   { to: '/rooms', label: 'Rooms', icon: RoomsIcon },
@@ -26,6 +27,7 @@ const modItems = [
 ];
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const role = useAuthStore((s) => s.user?.role);
   const isAuth = useAuthStore((s) => s.isAuthenticated());
   const isMod = role === 'Moderator' || role === 'Admin';
@@ -40,7 +42,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-60 shrink-0 border-r border-border bg-surface lg:block">
       <nav className="flex flex-col gap-1 p-3">
-        <SectionLabel>Main</SectionLabel>
+        <SectionLabel>{t('Main')}</SectionLabel>
         {navItems.map((item) => {
           let badgeCount = 0;
           if (item.showBadge && isAuth) badgeCount = totalUnread;
@@ -53,17 +55,17 @@ export function Sidebar() {
               icon={item.icon}
               badge={badgeCount}
             >
-              {item.label}
+              {t(item.label)}
             </SidebarLink>
           );
         })}
 
         {isMod && (
           <>
-            <SectionLabel>Staff</SectionLabel>
+            <SectionLabel>{t('Staff')}</SectionLabel>
             {modItems.map((item) => (
               <SidebarLink key={item.to} to={item.to} icon={item.icon}>
-                {item.label}
+                {t(item.label)}
               </SidebarLink>
             ))}
           </>

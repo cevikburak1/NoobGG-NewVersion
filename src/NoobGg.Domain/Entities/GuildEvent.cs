@@ -10,4 +10,6 @@ public class GuildEvent : BaseEntity
     public DateTime EndsAt { get; set; }
     public string? GameId { get; set; }
     public string? TournamentId { get; set; }
+    public List<string> GoingUserIds { get; set; } = [];
+    public DateTime? ReminderSentAt { get; set; }
 }

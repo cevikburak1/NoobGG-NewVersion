@@ -68,7 +68,8 @@ public class GetTournamentDetailQueryHandler
             m.Id, m.Round, m.MatchNumber,
             m.Participant1Id, m.Participant1Id is not null ? nameMap.GetValueOrDefault(m.Participant1Id, "Unknown") : null,
             m.Participant2Id, m.Participant2Id is not null ? nameMap.GetValueOrDefault(m.Participant2Id, "Unknown") : null,
-            m.WinnerId, m.Status.ToString(), m.NextMatchId
+            m.WinnerId, m.Status.ToString(), m.NextMatchId,
+            m.ProposedWinnerId, m.ProposedByUserId
         )).ToList();
 
         var isParticipant = _currentUser.IsAuthenticated && _currentUser.UserId is not null &&

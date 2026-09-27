@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useRecentActivity } from '@/features/activity/hooks';
 import type { RecentConversationItem, RecentPlayerItem, RecentRoomItem } from '@/features/activity/types';
@@ -237,13 +238,14 @@ function RoomRow({ room }: { room: RecentRoomItem }) {
 }
 
 export function RecentJoinedRoomsMini() {
+  const { t } = useTranslation();
   const { data, isLoading } = useRecentActivity();
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-surface/60 px-3 py-2">
         <Spinner size="sm" />
-        <span className="text-xs text-foreground-muted">Loading recent rooms…</span>
+        <span className="text-xs text-foreground-muted">{t('Loading recent rooms...')}</span>
       </div>
     );
   }
@@ -252,10 +254,10 @@ export function RecentJoinedRoomsMini() {
   if (rooms.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/80 bg-surface/40 px-4 py-3">
-        <p className="text-xs font-medium text-foreground">Recent rooms</p>
-        <p className="mt-0.5 text-[11px] text-foreground-muted">Join a room to see quick re-entry chips here.</p>
+        <p className="text-xs font-medium text-foreground">{t('Recent rooms')}</p>
+        <p className="mt-0.5 text-[11px] text-foreground-muted">{t('Join a room to see quick re-entry chips here.')}</p>
         <Link to="/rooms" className="mt-2 inline-block text-xs font-semibold text-primary hover:underline">
-          Browse rooms
+          {t('Browse rooms')}
         </Link>
       </div>
     );
@@ -264,9 +266,9 @@ export function RecentJoinedRoomsMini() {
   return (
     <div className="rounded-xl border border-border/60 bg-surface/60 p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">Recent rooms</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-foreground-muted">{t('Recent rooms')}</p>
         <Link to="/rooms" className="text-[11px] font-medium text-primary hover:underline">
-          See all
+          {t('See all')}
         </Link>
       </div>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

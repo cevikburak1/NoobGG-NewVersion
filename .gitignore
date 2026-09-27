@@ -47,6 +47,8 @@ docker-compose.override.yml
 ## Node (frontend)
 node_modules/
 dist/
+client/test-results/
+client/playwright-report/
 
 ## Tasks
 tasks/

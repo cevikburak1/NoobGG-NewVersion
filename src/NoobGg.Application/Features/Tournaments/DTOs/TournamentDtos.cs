@@ -23,6 +23,7 @@ public record TournamentMatchResponse(
     string Id, int Round, int MatchNumber,
     string? Participant1Id, string? Participant1Name,
     string? Participant2Id, string? Participant2Name,
-    string? WinnerId, string Status, string? NextMatchId);
+    string? WinnerId, string Status, string? NextMatchId,
+    string? ProposedWinnerId, string? ProposedByUserId);
 
 public record TournamentListResponse(List<TournamentListItemResponse> Tournaments, int TotalCount, bool HasMore);

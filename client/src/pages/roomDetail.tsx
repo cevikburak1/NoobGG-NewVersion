@@ -46,7 +46,7 @@ export default function RoomDetailPage() {
 
   const { data: blockedUsers } = useBlockedUsers();
   const blockedIds = useMemo(
-    () => new Set(blockedUsers?.map((b) => b.blockedUserId) ?? []),
+    () => new Set(blockedUsers?.map((b) => b.userId) ?? []),
     [blockedUsers],
   );
 
@@ -305,7 +305,7 @@ function RoomSidebar({
   blockedIds,
   onInvite,
 }: {
-  room: { members: { userId: string; username: string; role: string; joinedAt: string; eloPoints: number | null; rankTier: string | null }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null; status: string; averageElo: number | null; averageRankTier: string | null };
+  room: { members: { userId: string; username: string; avatarUrl: string | null; role: string; joinedAt: string; eloPoints: number | null; rankTier: string | null }[]; createdAt: string; isPublic: boolean; rankRange: { min: string; max: string } | null; status: string; averageElo: number | null; averageRankTier: string | null };
   onlineUsers: { userId: string; username: string }[];
   isMember: boolean | undefined;
   blockedIds: Set<string>;
@@ -337,7 +337,7 @@ function RoomSidebar({
                   className="flex items-center gap-2"
                 >
                   <div className="relative">
-                    <UserAvatar username={u.username} avatarUrl={u.avatarUrl} size="sm" />
+                    <UserAvatar username={u.username} avatarUrl={null} size="sm" />
                     <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface bg-success" />
                   </div>
                   <Link

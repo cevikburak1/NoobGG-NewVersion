@@ -18,3 +18,4 @@ export const createGuildSchema = z.object({
 });
 
 export type CreateGuildFormData = z.infer<typeof createGuildSchema>;
+export type CreateGuildInput = z.input<typeof createGuildSchema>;

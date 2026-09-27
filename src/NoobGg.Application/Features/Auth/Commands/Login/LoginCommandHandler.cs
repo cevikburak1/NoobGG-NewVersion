@@ -1,4 +1,6 @@
 using MediatR;
+using System.Text.RegularExpressions;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
@@ -31,7 +33,8 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
 
         var filter = Builders<User>.Filter.Or(
             Builders<User>.Filter.Eq(u => u.Email, normalizedInput),
-            Builders<User>.Filter.Eq(u => u.Username, normalizedInput));
+            Builders<User>.Filter.Regex(u => u.Username,
+                new BsonRegularExpression($"^{Regex.Escape(request.EmailOrUsername.Trim())}$", "i")));
 
         var user = await users.Find(filter).FirstOrDefaultAsync(ct);
         if (user is null)
@@ -45,6 +48,9 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<AuthResp
 
         if (user.IsBanned)
             return Result<AuthResponse>.Fail($"Account is banned: {user.BanReason ?? "No reason provided"}", 403);
+
+        if (user.SuspendedUntil > DateTime.UtcNow)
+            return Result<AuthResponse>.Fail($"Account is suspended until {user.SuspendedUntil:O}", 403);
 
         var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
         var userSettings = await settingsCol.Find(s => s.UserId == user.Id).FirstOrDefaultAsync(ct);

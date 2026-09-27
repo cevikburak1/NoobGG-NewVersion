@@ -40,6 +40,8 @@ export interface TournamentMatchResponse {
   winnerId: string | null;
   status: string;
   nextMatchId: string | null;
+  proposedWinnerId: string | null;
+  proposedByUserId: string | null;
 }
 
 export interface TournamentDetailResponse {
@@ -76,6 +78,7 @@ export interface CreateTournamentPayload {
   name: string;
   description?: string;
   gameId: string;
+  seasonId?: string;
   guildId?: string;
   format: number;
   maxParticipants: number;

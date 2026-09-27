@@ -42,4 +42,9 @@ public static class CollectionNames
     public const string TournamentEntries = "tournamentEntries";
     public const string TournamentMatches = "tournamentMatches";
     public const string RecentActivities = "recentActivities";
+    public const string GameSessions = "gameSessions";
+    public const string SessionFeedback = "sessionFeedback";
+    public const string GuildChatMessages = "guildChatMessages";
+    public const string Seasons = "seasons";
+    public const string BillingOrders = "billingOrders";
 }

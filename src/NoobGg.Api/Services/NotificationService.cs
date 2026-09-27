@@ -112,4 +112,9 @@ public class NotificationService : INotificationService
             _hubContext.Clients.Group(group2).FriendListChanged()
         );
     }
+
+    public Task ForceDisconnectAsync(string userId, string reason, CancellationToken ct = default)
+    {
+        return _hubContext.Clients.Group($"notifications:{userId}").ForceDisconnect(reason);
+    }
 }

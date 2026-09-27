@@ -1,13 +1,42 @@
 using System.Text.Json.Serialization;
+using System.Security.Cryptography;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NoobGg.Api.BackgroundJobs;
 using NoobGg.Api.Extensions;
 using NoobGg.Api.Hubs;
 using NoobGg.Api.Middleware;
 using NoobGg.Application;
 using NoobGg.Infrastructure;
+using NoobGg.Application.Common.Interfaces;
+using NoobGg.Api.Services;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (!builder.Environment.IsDevelopment())
+{
+    var requiredEnvironmentVariables = new[]
+    {
+        "MongoDb__ConnectionString", "Redis__ConnectionString", "Jwt__Secret",
+        "Email__SmtpHost", "Email__SmtpUsername", "Email__SmtpPassword",
+        "Email__FromEmail", "Cors__AllowedOrigins__0"
+    };
+    var missing = requiredEnvironmentVariables.Where(name =>
+        string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(name))).ToArray();
+    if (missing.Length > 0)
+        throw new InvalidOperationException($"Missing production environment variables: {string.Join(", ", missing)}");
+}
+
+if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Secret"]))
+{
+    if (!builder.Environment.IsDevelopment())
+        throw new InvalidOperationException("Jwt:Secret must be configured outside Development.");
+
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        ["Jwt:Secret"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48))
+    });
+}
 
 // Serilog
 var mongoConnectionString = builder.Configuration["MongoDb:ConnectionString"] ?? "mongodb://localhost:27017";
@@ -45,6 +74,11 @@ builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(builder.Configuration["Email:SmtpPassword"]))
+{
+    builder.Services.RemoveAll<IEmailService>();
+    builder.Services.AddTransient<IEmailService, DevelopmentEmailService>();
+}
 builder.Services.AddApiServices(builder.Configuration);
 builder.Services.AddNoobGgCors(builder.Configuration);
 builder.Services.AddControllers()
@@ -56,12 +90,17 @@ builder.Services.AddHostedService<DatabaseMigrationRunner>();
 builder.Services.AddHostedService<CommunityBoardBackfillInitializer>();
 builder.Services.AddHostedService<MongoIndexInitializer>();
 builder.Services.AddHostedService<PlanSeedInitializer>();
-builder.Services.AddHostedService<FakeDataSeeder>();
-builder.Services.AddHostedService<EloDataSeeder>();
-builder.Services.AddHostedService<GuildLeaderboardRoomDemoSeeder>();
-builder.Services.AddHostedService<CommunityFeaturesDemoSeeder>();
-builder.Services.AddHostedService<RoomMemberProfileSeeder>();
+if (builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("DemoSeed:Enabled"))
+{
+    builder.Services.AddHostedService<FakeDataSeeder>();
+    builder.Services.AddHostedService<EloDataSeeder>();
+    builder.Services.AddHostedService<GuildLeaderboardRoomDemoSeeder>();
+    builder.Services.AddHostedService<CommunityFeaturesDemoSeeder>();
+    builder.Services.AddHostedService<RoomMemberProfileSeeder>();
+}
 builder.Services.AddHostedService<GameCatalogSyncJob>();
+builder.Services.AddHostedService<GuildEventReminderJob>();
+builder.Services.AddHostedService<MatchmakingRecoveryJob>();
 
 var app = builder.Build();
 
@@ -91,6 +130,7 @@ app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<RoomHub>("/hubs/room");
 app.MapHub<DirectMessageHub>("/hubs/dm");
 app.MapHub<NotificationHub>("/hubs/notifications");
+app.MapHub<GuildChatHub>("/hubs/guild-chat");
 
 Log.Information("NoobGg API starting up");
 app.Run();

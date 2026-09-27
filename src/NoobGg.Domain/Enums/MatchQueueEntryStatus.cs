@@ -6,5 +6,6 @@ public enum MatchQueueEntryStatus
     Matched = 1,
     FallbackSuggested = 2,
     Cancelled = 3,
-    Expired = 4
+    Expired = 4,
+    Matching = 5
 }

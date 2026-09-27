@@ -33,7 +33,8 @@ public class GetMatchQueueStatusQueryHandler : IRequestHandler<GetMatchQueueStat
                 e.UserId == userId &&
                 (e.Status == MatchQueueEntryStatus.Searching ||
                  e.Status == MatchQueueEntryStatus.FallbackSuggested ||
-                 e.Status == MatchQueueEntryStatus.Matched))
+                 e.Status == MatchQueueEntryStatus.Matched ||
+                 e.Status == MatchQueueEntryStatus.Matching))
             .SortByDescending(e => e.UpdatedAt)
             .FirstOrDefaultAsync(ct);
 
@@ -55,6 +56,14 @@ public class GetMatchQueueStatusQueryHandler : IRequestHandler<GetMatchQueueStat
         }
 
         if (entry.Status == MatchQueueEntryStatus.Matched && !string.IsNullOrEmpty(entry.MatchedRoomId))
+        {
+            var rooms = _mongoContext.GetCollection<Room>(CollectionNames.Rooms);
+            if (!await rooms.Find(r => r.Id == entry.MatchedRoomId).AnyAsync(ct))
+            {
+                await queue.UpdateOneAsync(e => e.Id == entry.Id && e.Status == MatchQueueEntryStatus.Matched,
+                    Builders<MatchQueueEntry>.Update.Set(e => e.Status, MatchQueueEntryStatus.Expired), cancellationToken: ct);
+                return Result<GetMatchQueueStatusResponse>.Success(new GetMatchQueueStatusResponse("Idle", null, false, null, null));
+            }
             return Result<GetMatchQueueStatusResponse>.Success(
                 new GetMatchQueueStatusResponse(
                     "Matched",
@@ -62,6 +71,7 @@ public class GetMatchQueueStatusQueryHandler : IRequestHandler<GetMatchQueueStat
                     false,
                     entry.GameId,
                     (int)(DateTime.UtcNow - entry.CreatedAt).TotalSeconds));
+        }
 
         var secondsInQueue = (int)(DateTime.UtcNow - entry.CreatedAt).TotalSeconds;
         var fallbackReady = secondsInQueue >= MatchmakingConstants.FallbackAfterSeconds;

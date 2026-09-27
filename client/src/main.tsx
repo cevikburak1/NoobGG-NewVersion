@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import axios from 'axios';
 import { useAuthStore } from '@/stores/authStore';
 import './styles/globals.css';
+import './lib/i18n';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 const REFRESH_TOKEN_KEY = 'noobgg_refresh_token';

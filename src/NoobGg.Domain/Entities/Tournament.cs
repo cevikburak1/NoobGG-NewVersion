@@ -9,6 +9,7 @@ public class Tournament : BaseEntity
     public string GameId { get; set; } = string.Empty;
     public string OrganizerId { get; set; } = string.Empty;
     public string? GuildId { get; set; }
+    public string? SeasonId { get; set; }
     public TournamentFormat Format { get; set; } = TournamentFormat.SingleElimination;
     public TournamentStatus Status { get; set; } = TournamentStatus.Registration;
     public int MaxParticipants { get; set; } = 16;

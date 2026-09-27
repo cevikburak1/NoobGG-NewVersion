@@ -62,7 +62,7 @@ public class CreateGuildEventCommandHandler : IRequestHandler<CreateGuildEventCo
             guildEvent.Title, guildEvent.Description,
             guildEvent.StartsAt, guildEvent.EndsAt,
             guildEvent.GameId, guildEvent.TournamentId,
-            guildEvent.CreatedAt);
+            guildEvent.CreatedAt, 0, false);
 
         return Result<GuildEventResponse>.Created(response);
     }

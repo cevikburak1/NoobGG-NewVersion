@@ -11,6 +11,7 @@ public record CreateTournamentCommand : IRequest<Result<TournamentDetailResponse
     public string? Description { get; init; }
     public string GameId { get; init; } = string.Empty;
     public string? GuildId { get; init; }
+    public string? SeasonId { get; init; }
     public TournamentFormat Format { get; init; }
     public int MaxParticipants { get; init; }
     public DateTime RegistrationDeadline { get; init; }

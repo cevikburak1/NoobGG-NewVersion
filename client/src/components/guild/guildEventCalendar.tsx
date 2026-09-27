@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { useGuildEvents, useCreateGuildEvent, useDeleteGuildEvent } from '@/features/guildEvents/hooks';
 import type { GuildEventResponse } from '@/features/guildEvents/types';
 import {
-  Button, Modal, Input, Textarea, Badge, Spinner,
+  Button, Modal, Input, Textarea, Badge, Spinner, Card,
   useToast, staggerContainer, staggerItem,
 } from '@/components/ui';
 
@@ -53,11 +55,15 @@ function EventCard({
   canManage,
   onDelete,
   isDeleting,
+  onRsvp,
+  isRsvping,
 }: {
   event: GuildEventResponse;
   canManage: boolean;
   onDelete: (id: string) => void;
   isDeleting: boolean;
+  onRsvp: (id: string, going: boolean) => void;
+  isRsvping: boolean;
 }) {
   const isPast = new Date(event.endsAt) < new Date();
 
@@ -107,7 +113,15 @@ function EventCard({
         </span>
         {event.gameId && <Badge variant="primary">Game</Badge>}
         {isPast && <Badge variant="default">Past</Badge>}
+        <span className="text-xs text-foreground-muted">{event.goingCount} going</span>
       </div>
+
+      {!isPast && (
+        <button type="button" onClick={() => onRsvp(event.id, !event.isGoing)} disabled={isRsvping}
+          className="mt-3 text-xs font-semibold text-primary hover:text-primary-hover disabled:opacity-50">
+          {event.isGoing ? 'Cancel RSVP' : "I'm going"}
+        </button>
+      )}
 
       {event.tournamentId && (
         <Link
@@ -246,6 +260,12 @@ function CreateEventModal({
 
 export function GuildEventCalendar({ guildId, canManage }: GuildEventCalendarProps) {
   const { data: eventList, isLoading } = useGuildEvents(guildId);
+  const qc = useQueryClient();
+  const rsvp = useMutation({
+    mutationFn: async ({ id, going }: { id: string; going: boolean }) =>
+      api.post(`/api/guild-events/${id}/rsvp`, { going }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['guildEvents', guildId] }),
+  });
   const deleteEvent = useDeleteGuildEvent();
   const { addToast } = useToast();
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -325,6 +345,8 @@ export function GuildEventCalendar({ guildId, canManage }: GuildEventCalendarPro
                       canManage={canManage}
                       onDelete={handleDelete}
                       isDeleting={deleteEvent.isPending}
+                      onRsvp={(id, going) => rsvp.mutate({ id, going })}
+                      isRsvping={rsvp.isPending}
                     />
                   ))}
                 </AnimatePresence>

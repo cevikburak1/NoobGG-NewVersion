@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/cn';
+import { useTranslation } from 'react-i18next';
 
 const tabs = [
   { to: '/rooms', label: 'Rooms' },
@@ -13,21 +14,22 @@ const tabs = [
 ];
 
 export function MobileNav() {
+  const { t } = useTranslation();
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-surface/95 backdrop-blur-md lg:hidden">
-      <div className="flex items-center justify-around py-2">
+      <div className="flex items-center gap-1 overflow-x-auto py-2">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-0.5 px-3 py-1 text-xs font-medium transition-colors',
+                'shrink-0 px-3 py-1 text-xs font-medium transition-colors',
                 isActive ? 'text-primary' : 'text-foreground-subtle',
               )
             }
           >
-            {tab.label}
+            {t(tab.label)}
           </NavLink>
         ))}
       </div>

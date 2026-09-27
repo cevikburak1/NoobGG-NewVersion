@@ -37,8 +37,10 @@ public class ReportTournamentMatchResultCommandHandler
         if (tournament is null)
             return Result.Fail("Tournament not found", 404);
 
-        if (tournament.OrganizerId != userId)
-            return Result.Fail("Only the organizer can report match results", 403);
+        var isOrganizer = tournament.OrganizerId == userId;
+        var isParticipant = match.Participant1Id == userId || match.Participant2Id == userId;
+        if (!isOrganizer && !isParticipant)
+            return Result.Fail("Only participants or the organizer can report results", 403);
 
         if (match.Status == TournamentMatchStatus.Completed)
             return Result.Fail("Match result has already been reported");
@@ -49,17 +51,40 @@ public class ReportTournamentMatchResultCommandHandler
         if (request.WinnerId != match.Participant1Id && request.WinnerId != match.Participant2Id)
             return Result.Fail("Winner must be one of the match participants");
 
+        if (!isOrganizer)
+        {
+            if (match.ProposedWinnerId is null)
+            {
+                var proposed = await matchesCollection.UpdateOneAsync(
+                    m => m.Id == match.Id && m.ProposedWinnerId == null && m.Status != TournamentMatchStatus.Completed,
+                    Builders<TournamentMatch>.Update
+                        .Set(m => m.ProposedWinnerId, request.WinnerId)
+                        .Set(m => m.ProposedByUserId, userId)
+                        .Set(m => m.UpdatedAt, DateTime.UtcNow), cancellationToken: ct);
+                return proposed.ModifiedCount > 0
+                    ? Result.Success()
+                    : Result.Fail("Result proposal changed; refresh and try again", 409);
+            }
+            if (match.ProposedByUserId == userId)
+                return Result.Fail("Waiting for the other participant to confirm", 409);
+            if (match.ProposedWinnerId != request.WinnerId)
+                return Result.Fail("The result differs from the proposal; ask the organizer to resolve it", 409);
+        }
+
         var loserId = request.WinnerId == match.Participant1Id
             ? match.Participant2Id
             : match.Participant1Id;
 
-        await matchesCollection.UpdateOneAsync(
-            m => m.Id == request.MatchId,
+        var finalized = await matchesCollection.UpdateOneAsync(
+            m => m.Id == request.MatchId && m.Status != TournamentMatchStatus.Completed &&
+                 (isOrganizer || (m.ProposedWinnerId == request.WinnerId && m.ProposedByUserId != userId)),
             Builders<TournamentMatch>.Update
                 .Set(m => m.WinnerId, request.WinnerId)
                 .Set(m => m.Status, TournamentMatchStatus.Completed)
                 .Set(m => m.UpdatedAt, DateTime.UtcNow),
             cancellationToken: ct);
+        if (finalized.ModifiedCount == 0)
+            return Result.Fail("Result has already changed", 409);
 
         // Advance winner to next match
         if (match.NextMatchId is not null)

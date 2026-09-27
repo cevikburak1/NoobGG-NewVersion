@@ -12,6 +12,8 @@ public class User : BaseEntity
     public bool IsBanned { get; set; }
     public string? BanReason { get; set; }
     public DateTime? BannedAt { get; set; }
+    public DateTime? SuspendedUntil { get; set; }
+    public string? SuspensionReason { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public bool IsProfileComplete { get; set; }
 }

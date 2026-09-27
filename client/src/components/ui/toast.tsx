@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 interface Toast {
   id: string;
   title: string;
-  message: string;
+  message?: string;
   type?: 'info' | 'success' | 'warning' | 'error';
   duration?: number;
   onClick?: () => void;
@@ -75,7 +75,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground truncate">{toast.title}</p>
-            <p className="text-xs text-foreground-muted mt-0.5 line-clamp-2">{toast.message}</p>
+            {toast.message && <p className="text-xs text-foreground-muted mt-0.5 line-clamp-2">{toast.message}</p>}
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onDismiss(); }}

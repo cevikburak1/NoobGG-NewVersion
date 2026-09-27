@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/appLayout';
+import { GlobalAtmosphereLayout } from '@/components/layout/globalAtmosphereLayout';
 import { AuthLayout } from '@/components/layout/authLayout';
 import { ProtectedRoute } from './protectedRoute';
 import { RequireProfile } from './requireProfile';
@@ -300,4 +301,4 @@ const routes: RouteObject[] = [
   { path: '*', element: <Navigate to="/" replace /> },
 ];
 
-export const router = createBrowserRouter(routes);
+export const router = createBrowserRouter([{ element: <GlobalAtmosphereLayout />, children: routes }]);

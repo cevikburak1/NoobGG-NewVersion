@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import { useAuthStore } from '@/stores/authStore';
 import type { RoomFilters } from '@/types/api';
 import type { RoomResponse } from '@/features/rooms/types';
 import type { RecommendedRoomResponse } from '@/features/recommendations/types';
+import { ReplaySessions } from '@/components/session/replaySessions';
 import type { JoinMatchQueueRequest } from '@/features/matchmaking/types';
 import {
   Button, Input, Select, Textarea, Modal, Badge,
@@ -81,6 +83,7 @@ function quickMatchErrorMessage(e: unknown): string {
 }
 
 export default function RoomListPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const isAuth = useAuthStore((s) => s.isAuthenticated());
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -110,12 +113,12 @@ export default function RoomListPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="flex items-baseline gap-3">
-              <h1 className="text-3xl font-bold text-foreground">Rooms</h1>
+              <h1 className="text-3xl font-bold text-foreground">{t('Rooms')}</h1>
               {data && (
-                <span className="text-sm text-foreground-subtle">{data.totalCount} total</span>
+                <span className="text-sm text-foreground-subtle">{data.totalCount} {t('total')}</span>
               )}
             </div>
-            <p className="mt-1 text-sm text-foreground-muted">Browse and join rooms to find teammates</p>
+            <p className="mt-1 text-sm text-foreground-muted">{t('Browse and join rooms to find teammates')}</p>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
             <Button
@@ -125,12 +128,13 @@ export default function RoomListPage() {
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
-              Create Room
+              {t('Create Room')}
             </Button>
           </motion.div>
         </div>
 
         {isAuth ? <RecentJoinedRoomsMini /> : null}
+        {isAuth ? <ReplaySessions /> : null}
 
         {isAuth ? (
           <QuickMatchSection
@@ -163,7 +167,7 @@ export default function RoomListPage() {
               <>
                 <Input
                   id="gameFilter"
-                  placeholder="Filter by game..."
+                  placeholder={t('Filter by game...')}
                   value={gameFilterSearch}
                   onChange={(e) => { setGameFilterSearch(e.target.value); setShowGameDropdown(true); }}
                   onFocus={() => setShowGameDropdown(true)}
@@ -208,19 +212,19 @@ export default function RoomListPage() {
           <div className="w-full sm:w-44">
             <Select
               id="region"
-              options={regionOptions}
+              options={regionOptions.map((option) => ({ ...option, label: t(option.label) }))}
               value={filters.region ?? ''}
               onChange={(e) => setFilters({ ...filters, region: e.target.value as RoomFilters['region'], page: 1 })}
-              placeholder="All Regions"
+              placeholder={t('All Regions')}
             />
           </div>
           <div className="w-full sm:w-44">
             <Select
               id="language"
-              options={languageOptions}
+              options={languageOptions.map((option) => ({ ...option, label: t(option.label) }))}
               value={filters.language ?? ''}
               onChange={(e) => setFilters({ ...filters, language: e.target.value as RoomFilters['language'], page: 1 })}
-              placeholder="All Languages"
+              placeholder={t('All Languages')}
             />
           </div>
           <div className="flex gap-1">
@@ -234,7 +238,7 @@ export default function RoomListPage() {
                     : 'border-border text-foreground-muted hover:border-border-hover'
                 }`}
               >
-                {status}
+                {t(status)}
               </button>
             ))}
           </div>
@@ -250,9 +254,9 @@ export default function RoomListPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm">✨</span>
-                <h2 className="text-sm font-semibold text-foreground">Recommended for you</h2>
+                <h2 className="text-sm font-semibold text-foreground">{t('Recommended for you')}</h2>
               </div>
-              <span className="text-xs text-foreground-subtle">Based on your game profiles</span>
+              <span className="text-xs text-foreground-subtle">{t('Based on your game profiles')}</span>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {recommendedRooms.map((room) => (
@@ -294,10 +298,10 @@ export default function RoomListPage() {
                   disabled={!data.hasPreviousPage}
                   onClick={() => setFilters({ ...filters, page: (filters.page ?? 1) - 1 })}
                 >
-                  Previous
+                  {t('Previous')}
                 </Button>
                 <span className="text-sm text-foreground-muted">
-                  Page {data.page} of {Math.ceil(data.totalCount / data.pageSize)}
+                  {t('Page')} {data.page} {t('of')} {Math.ceil(data.totalCount / data.pageSize)}
                 </span>
                 <Button
                   variant="outline"
@@ -305,7 +309,7 @@ export default function RoomListPage() {
                   disabled={!data.hasNextPage}
                   onClick={() => setFilters({ ...filters, page: (filters.page ?? 1) + 1 })}
                 >
-                  Next
+                  {t('Next')}
                 </Button>
               </motion.div>
             )}
@@ -323,13 +327,13 @@ export default function RoomListPage() {
             >
               🏠
             </motion.div>
-            <h3 className="mt-4 text-xl font-bold text-foreground">No rooms found</h3>
-            <p className="mt-2 text-foreground-muted">Be the first to create a room!</p>
+            <h3 className="mt-4 text-xl font-bold text-foreground">{t('No rooms found')}</h3>
+            <p className="mt-2 text-foreground-muted">{t('Be the first to create a room!')}</p>
             <Button
               className="mt-4"
               onClick={() => isAuth ? setShowCreateModal(true) : navigate('/login')}
             >
-              Create Room
+              {t('Create Room')}
             </Button>
           </motion.div>
         )}
@@ -891,7 +895,9 @@ function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
             animate={{ opacity: 1 }}
             className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger"
           >
-            {(createRoom.error as any)?.response?.data?.title ?? 'Failed to create room. Please try again.'}
+            {axios.isAxiosError<{ title?: string }>(createRoom.error)
+              ? createRoom.error.response?.data?.title ?? 'Failed to create room. Please try again.'
+              : 'Failed to create room. Please try again.'}
           </motion.p>
         )}
 

@@ -70,7 +70,17 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
             .FirstOrDefaultAsync(ct);
 
         if (existingMatched?.MatchedRoomId is { } existingRoomId)
-            return Result<JoinMatchQueueResponse>.Success(new JoinMatchQueueResponse("Matched", existingRoomId, false));
+        {
+            if (await rooms.Find(r => r.Id == existingRoomId).AnyAsync(ct))
+                return Result<JoinMatchQueueResponse>.Success(new JoinMatchQueueResponse("Matched", existingRoomId, false));
+            await queue.UpdateOneAsync(e => e.Id == existingMatched.Id && e.Status == MatchQueueEntryStatus.Matched,
+                Builders<MatchQueueEntry>.Update.Set(e => e.Status, MatchQueueEntryStatus.Expired), cancellationToken: ct);
+        }
+
+        var matching = await queue.Find(e => e.UserId == userId && e.Status == MatchQueueEntryStatus.Matching)
+            .FirstOrDefaultAsync(ct);
+        if (matching is not null)
+            return Result<JoinMatchQueueResponse>.Success(new JoinMatchQueueResponse("Searching", null, false));
 
         // Primary path: auto-join an existing Open room. Strict pass respects region/language filters;
         // if that turns up empty (or we had nothing to filter on), fall back to a loose gameId-only pass
@@ -164,7 +174,20 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
                 UpdatedAt = DateTime.UtcNow
             };
 
-            await queue.InsertOneAsync(workingEntry, cancellationToken: ct);
+            try
+            {
+                await queue.InsertOneAsync(workingEntry, cancellationToken: ct);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+            {
+                var current = await queue.Find(e => e.UserId == userId &&
+                    (e.Status == MatchQueueEntryStatus.Searching || e.Status == MatchQueueEntryStatus.FallbackSuggested))
+                    .FirstOrDefaultAsync(ct);
+                if (current is null) throw;
+                return Result<JoinMatchQueueResponse>.Success(
+                    new JoinMatchQueueResponse(current.Status == MatchQueueEntryStatus.FallbackSuggested
+                        ? "FallbackSuggested" : "Searching", null, false));
+            }
         }
         else
         {
@@ -225,6 +248,7 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
                     Builders<MatchQueueEntry>.Filter.Ne(e => e.UserId, myEntry.UserId),
                     activeQueueFilter,
                     Builders<MatchQueueEntry>.Filter.Eq(e => e.GameId, myEntry.GameId),
+                    Builders<MatchQueueEntry>.Filter.Gt(e => e.ExpiresAt, DateTime.UtcNow),
                     Builders<MatchQueueEntry>.Filter.Eq(e => e.Region, myEntry.Region),
                     Builders<MatchQueueEntry>.Filter.Eq(e => e.Language, myEntry.Language),
                     Builders<MatchQueueEntry>.Filter.Gte(e => e.EloPoints, minElo),
@@ -239,6 +263,30 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
                 continue;
 
             var partnerPreviousStatus = partner.Status;
+            var myPreviousStatus = myEntry.Status;
+            var claimId = Guid.NewGuid().ToString("N");
+            var claimedAt = DateTime.UtcNow;
+            var partnerClaim = await queue.UpdateOneAsync(
+                Builders<MatchQueueEntry>.Filter.And(
+                    Builders<MatchQueueEntry>.Filter.Eq(e => e.Id, partner.Id), activeQueueFilter),
+                Builders<MatchQueueEntry>.Update
+                    .Set(e => e.Status, MatchQueueEntryStatus.Matching)
+                    .Set(e => e.MatchClaimId, claimId)
+                    .Set(e => e.UpdatedAt, claimedAt), cancellationToken: ct);
+            if (partnerClaim.ModifiedCount == 0) continue;
+
+            var selfClaim = await queue.UpdateOneAsync(
+                Builders<MatchQueueEntry>.Filter.And(
+                    Builders<MatchQueueEntry>.Filter.Eq(e => e.Id, myEntry.Id), activeQueueFilter),
+                Builders<MatchQueueEntry>.Update
+                    .Set(e => e.Status, MatchQueueEntryStatus.Matching)
+                    .Set(e => e.MatchClaimId, claimId)
+                    .Set(e => e.UpdatedAt, claimedAt), cancellationToken: ct);
+            if (selfClaim.ModifiedCount == 0)
+            {
+                await ReleaseClaimAsync(queue, partner.Id, claimId, partnerPreviousStatus, ct);
+                return null;
+            }
 
             var creatorId = partner.CreatedAt <= myEntry.CreatedAt ? partner.UserId : myEntry.UserId;
             var joinerId = creatorId == partner.UserId ? myEntry.UserId : partner.UserId;
@@ -255,14 +303,20 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
                     ct);
 
                 if (string.IsNullOrEmpty(roomId))
+                {
+                    await ReleaseClaimAsync(queue, partner.Id, claimId, partnerPreviousStatus, ct);
+                    await ReleaseClaimAsync(queue, myEntry.Id, claimId, myPreviousStatus, ct);
                     continue;
+                }
 
                 var partnerUpdate = await queue.UpdateOneAsync(
                     Builders<MatchQueueEntry>.Filter.And(
                         Builders<MatchQueueEntry>.Filter.Eq(e => e.Id, partner.Id),
-                        activeQueueFilter),
+                        Builders<MatchQueueEntry>.Filter.Eq(e => e.MatchClaimId, claimId),
+                        Builders<MatchQueueEntry>.Filter.Eq(e => e.Status, MatchQueueEntryStatus.Matching)),
                     Builders<MatchQueueEntry>.Update
                         .Set(e => e.Status, MatchQueueEntryStatus.Matched)
+                        .Set(e => e.MatchClaimId, (string?)null)
                         .Set(e => e.MatchedRoomId, roomId)
                         .Set(e => e.MatchedWithUserId, myEntry.UserId)
                         .Set(e => e.UpdatedAt, DateTime.UtcNow),
@@ -270,6 +324,8 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
 
                 if (partnerUpdate.ModifiedCount == 0)
                 {
+                    await ReleaseClaimAsync(queue, partner.Id, claimId, partnerPreviousStatus, ct);
+                    await ReleaseClaimAsync(queue, myEntry.Id, claimId, myPreviousStatus, ct);
                     await DeleteQuickMatchRoomAsync(roomId, ct);
                     continue;
                 }
@@ -277,9 +333,11 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
                 var selfUpdate = await queue.UpdateOneAsync(
                     Builders<MatchQueueEntry>.Filter.And(
                         Builders<MatchQueueEntry>.Filter.Eq(e => e.Id, myEntry.Id),
-                        activeQueueFilter),
+                        Builders<MatchQueueEntry>.Filter.Eq(e => e.MatchClaimId, claimId),
+                        Builders<MatchQueueEntry>.Filter.Eq(e => e.Status, MatchQueueEntryStatus.Matching)),
                     Builders<MatchQueueEntry>.Update
                         .Set(e => e.Status, MatchQueueEntryStatus.Matched)
+                        .Set(e => e.MatchClaimId, (string?)null)
                         .Set(e => e.MatchedRoomId, roomId)
                         .Set(e => e.MatchedWithUserId, partner.UserId)
                         .Set(e => e.UpdatedAt, DateTime.UtcNow),
@@ -287,31 +345,49 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
 
                 if (selfUpdate.ModifiedCount == 0)
                 {
-                    await queue.UpdateOneAsync(
-                        e => e.Id == partner.Id,
+                    await queue.UpdateOneAsync(e => e.Id == partner.Id && e.MatchedRoomId == roomId,
                         Builders<MatchQueueEntry>.Update
                             .Set(e => e.Status, partnerPreviousStatus)
                             .Set(e => e.MatchedRoomId, (string?)null)
                             .Set(e => e.MatchedWithUserId, (string?)null)
                             .Set(e => e.UpdatedAt, DateTime.UtcNow),
                         cancellationToken: ct);
+                    await ReleaseClaimAsync(queue, myEntry.Id, claimId, myPreviousStatus, ct);
                     await DeleteQuickMatchRoomAsync(roomId, ct);
                     continue;
                 }
 
-                await _roomNotification.NotifyRoomListChangedAsync(ct);
+                await _mongoContext.GetCollection<Room>(CollectionNames.Rooms).UpdateOneAsync(
+                    r => r.Id == roomId,
+                    Builders<Room>.Update.Set(r => r.IsPublic, true), cancellationToken: ct);
+                try { await _roomNotification.NotifyRoomListChangedAsync(ct); }
+                catch { /* The stored match remains valid; clients also poll queue status. */ }
                 return Result<JoinMatchQueueResponse>.Success(new JoinMatchQueueResponse("Matched", roomId, false));
             }
             catch
             {
+                await ReleaseClaimAsync(queue, partner.Id, claimId, partnerPreviousStatus, CancellationToken.None);
+                await ReleaseClaimAsync(queue, myEntry.Id, claimId, myPreviousStatus, CancellationToken.None);
                 if (roomId != null)
-                    await DeleteQuickMatchRoomAsync(roomId, ct);
+                {
+                    await queue.UpdateManyAsync(e => e.MatchedRoomId == roomId,
+                        Builders<MatchQueueEntry>.Update.Set(e => e.Status, MatchQueueEntryStatus.Expired)
+                            .Set(e => e.MatchedRoomId, (string?)null), cancellationToken: CancellationToken.None);
+                    await DeleteQuickMatchRoomAsync(roomId, CancellationToken.None);
+                }
                 throw;
             }
         }
 
         return null;
     }
+
+    private static Task ReleaseClaimAsync(IMongoCollection<MatchQueueEntry> queue, string entryId,
+        string claimId, MatchQueueEntryStatus previousStatus, CancellationToken ct) =>
+        queue.UpdateOneAsync(e => e.Id == entryId && e.Status == MatchQueueEntryStatus.Matching && e.MatchClaimId == claimId,
+            Builders<MatchQueueEntry>.Update.Set(e => e.Status, previousStatus)
+                .Set(e => e.MatchClaimId, (string?)null).Set(e => e.UpdatedAt, DateTime.UtcNow),
+            cancellationToken: ct);
 
     private async Task<string?> CreateQuickMatchRoomAsync(
         string creatorId,
@@ -335,7 +411,7 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
             Description = "Auto-created by quick match",
             GameId = gameId,
             CreatorId = creatorId,
-            IsPublic = true,
+            IsPublic = false,
             Region = region,
             Language = language,
             Tags = ["quick-match", "hemen-eslestir"],
@@ -364,9 +440,17 @@ public class JoinMatchQueueCommandHandler : IRequestHandler<JoinMatchQueueComman
             JoinedAt = DateTime.UtcNow
         };
 
-        await roomMembers.InsertManyAsync([ownerMember, joinerMember], cancellationToken: ct);
-        await RoomEloHelper.RecalculateAsync(_mongoContext, room.Id, ct);
-        return room.Id;
+        try
+        {
+            await roomMembers.InsertManyAsync([ownerMember, joinerMember], cancellationToken: ct);
+            await RoomEloHelper.RecalculateAsync(_mongoContext, room.Id, ct);
+            return room.Id;
+        }
+        catch
+        {
+            await DeleteQuickMatchRoomAsync(room.Id, CancellationToken.None);
+            throw;
+        }
     }
 
     private async Task DeleteQuickMatchRoomAsync(string roomId, CancellationToken ct)

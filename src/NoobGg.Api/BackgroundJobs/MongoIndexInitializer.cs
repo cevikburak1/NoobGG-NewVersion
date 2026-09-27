@@ -2,6 +2,7 @@ using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Domain.Entities;
+using NoobGg.Domain.Enums;
 
 namespace NoobGg.Api.BackgroundJobs;
 
@@ -72,6 +73,10 @@ public class MongoIndexInitializer : IHostedService
         await CreateTournamentEntryIndexes(ct);
         await CreateTournamentMatchIndexes(ct);
         await CreateRecentActivityIndexes(ct);
+        await CreateGameSessionIndexes(ct);
+        await CreateGuildChatIndexes(ct);
+        await CreateSeasonIndexes(ct);
+        await CreateBillingOrderIndexes(ct);
     }
 
     private async Task CreateUserIndexes(CancellationToken ct)
@@ -87,6 +92,53 @@ public class MongoIndexInitializer : IHostedService
             new CreateIndexModel<User>(
                 Builders<User>.IndexKeys.Ascending(u => u.Role),
                 new CreateIndexOptions { Name = "idx_role" })
+        ], ct);
+    }
+
+    private async Task CreateGameSessionIndexes(CancellationToken ct)
+    {
+        var sessions = _mongoContext.GetCollection<GameSession>(CollectionNames.GameSessions);
+        await sessions.Indexes.CreateManyAsync([
+            new CreateIndexModel<GameSession>(Builders<GameSession>.IndexKeys.Ascending(s => s.RoomId),
+                new CreateIndexOptions { Unique = true, Name = "idx_session_room" }),
+            new CreateIndexModel<GameSession>(Builders<GameSession>.IndexKeys.Ascending(s => s.ParticipantIds).Descending(s => s.EndedAt),
+                new CreateIndexOptions { Name = "idx_session_participant_ended" })
+        ], ct);
+        var feedback = _mongoContext.GetCollection<SessionFeedback>(CollectionNames.SessionFeedback);
+        await feedback.Indexes.CreateOneAsync(new CreateIndexModel<SessionFeedback>(
+            Builders<SessionFeedback>.IndexKeys.Ascending(f => f.SessionId).Ascending(f => f.UserId),
+            new CreateIndexOptions { Unique = true, Name = "idx_session_user_unique" }), cancellationToken: ct);
+    }
+
+    private async Task CreateGuildChatIndexes(CancellationToken ct)
+    {
+        var messages = _mongoContext.GetCollection<GuildChatMessage>(CollectionNames.GuildChatMessages);
+        await messages.Indexes.CreateOneAsync(new CreateIndexModel<GuildChatMessage>(
+            Builders<GuildChatMessage>.IndexKeys.Ascending(m => m.GuildId).Descending(m => m.CreatedAt),
+            new CreateIndexOptions { Name = "idx_guild_chat_created" }), cancellationToken: ct);
+    }
+
+    private async Task CreateSeasonIndexes(CancellationToken ct)
+    {
+        var seasons = _mongoContext.GetCollection<Season>(CollectionNames.Seasons);
+        await seasons.Indexes.CreateOneAsync(new CreateIndexModel<Season>(
+            Builders<Season>.IndexKeys.Ascending(s => s.GameId).Descending(s => s.StartsAt),
+            new CreateIndexOptions { Name = "idx_season_game_start" }), cancellationToken: ct);
+        var tournaments = _mongoContext.GetCollection<Tournament>(CollectionNames.Tournaments);
+        await tournaments.Indexes.CreateOneAsync(new CreateIndexModel<Tournament>(
+            Builders<Tournament>.IndexKeys.Ascending(t => t.SeasonId),
+            new CreateIndexOptions { Name = "idx_tournament_season" }), cancellationToken: ct);
+    }
+
+    private async Task CreateBillingOrderIndexes(CancellationToken ct)
+    {
+        var orders = _mongoContext.GetCollection<BillingOrder>(CollectionNames.BillingOrders);
+        await orders.Indexes.CreateManyAsync([
+            new CreateIndexModel<BillingOrder>(Builders<BillingOrder>.IndexKeys.Ascending(o => o.UserId).Descending(o => o.CreatedAt),
+                new CreateIndexOptions { Name = "idx_billing_user_created" }),
+            new CreateIndexModel<BillingOrder>(Builders<BillingOrder>.IndexKeys.Ascending(o => o.ProviderEventId),
+                new CreateIndexOptions<BillingOrder> { Name = "idx_billing_provider_event", Unique = true,
+                    PartialFilterExpression = Builders<BillingOrder>.Filter.Type(o => o.ProviderEventId, MongoDB.Bson.BsonType.String) })
         ], ct);
     }
 
@@ -589,7 +641,25 @@ public class MongoIndexInitializer : IHostedService
     private async Task CreateMatchQueueIndexes(CancellationToken ct)
     {
         var col = _mongoContext.GetCollection<MatchQueueEntry>(CollectionNames.MatchQueueEntries);
+        var searching = Builders<MatchQueueEntry>.Filter.In(e => e.Status,
+            [MatchQueueEntryStatus.Searching, MatchQueueEntryStatus.FallbackSuggested, MatchQueueEntryStatus.Matching]);
+        var active = await col.Find(searching).SortByDescending(e => e.UpdatedAt).ToListAsync(ct);
+        var duplicateIds = active.GroupBy(e => e.UserId).SelectMany(g => g.Skip(1).Select(e => e.Id)).ToList();
+        if (duplicateIds.Count > 0)
+        {
+            await col.UpdateManyAsync(Builders<MatchQueueEntry>.Filter.In(e => e.Id, duplicateIds),
+                Builders<MatchQueueEntry>.Update.Set(e => e.Status, MatchQueueEntryStatus.Cancelled),
+                cancellationToken: ct);
+        }
         await col.Indexes.CreateManyAsync([
+            new CreateIndexModel<MatchQueueEntry>(
+                Builders<MatchQueueEntry>.IndexKeys.Ascending(e => e.UserId),
+                new CreateIndexOptions<MatchQueueEntry>
+                {
+                    Unique = true,
+                    Name = "idx_one_active_queue_per_user",
+                    PartialFilterExpression = searching
+                }),
             new CreateIndexModel<MatchQueueEntry>(
                 Builders<MatchQueueEntry>.IndexKeys
                     .Ascending(e => e.UserId)

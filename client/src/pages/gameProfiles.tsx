@@ -7,6 +7,7 @@ import {
   useDeleteGameProfile,
 } from '@/features/profile/hooks';
 import { useGameSearch } from '@/features/games/hooks';
+import { usePagination } from '@/hooks/usePagination';
 import {
   Button,
   Input,
@@ -16,6 +17,7 @@ import {
   AnimatedPage,
   Spinner,
   Modal,
+  Pagination,
   staggerContainer,
   staggerItem,
 } from '@/components/ui';
@@ -70,6 +72,7 @@ const fromExisting = (gp: GameProfileResponse): GameForm => ({
 
 export default function GameProfilesPage() {
   const { data: profile, isLoading } = useMyProfile();
+  const gamePage = usePagination(profile?.games ?? [], 8);
   const addGameProfile = useAddGameProfile();
   const updateGameProfile = useUpdateGameProfile();
   const deleteGameProfile = useDeleteGameProfile();
@@ -78,7 +81,7 @@ export default function GameProfilesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<GameForm>(emptyForm());
   const [gameQuery, setGameQuery] = useState('');
-  const [selectedGame, setSelectedGame] = useState<GameResponse | null>(null);
+  const [, setSelectedGame] = useState<GameResponse | null>(null);
 
   const { data: searchResults, isLoading: isSearching } = useGameSearch(gameQuery);
 
@@ -174,13 +177,14 @@ export default function GameProfilesPage() {
         </div>
 
         {games.length > 0 ? (
+          <>
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate="show"
             className="space-y-4"
           >
-            {games.map((gp) => (
+            {gamePage.items.map((gp) => (
               <motion.div key={gp.id} variants={staggerItem}>
                 <Card className="hover:border-primary/30 transition-colors">
                   <div className="flex items-start gap-4">
@@ -234,6 +238,9 @@ export default function GameProfilesPage() {
               </motion.div>
             ))}
           </motion.div>
+          <Pagination className="mt-4" page={gamePage.page} pageSize={gamePage.pageSize}
+            totalItems={gamePage.totalItems} onPageChange={gamePage.setPage} />
+          </>
         ) : (
           <Card className="text-center py-12">
             <div className="text-5xl mb-3">🎮</div>

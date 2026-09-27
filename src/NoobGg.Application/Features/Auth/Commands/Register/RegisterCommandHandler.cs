@@ -1,4 +1,6 @@
 using MediatR;
+using System.Text.RegularExpressions;
+using MongoDB.Bson;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
@@ -42,7 +44,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
             return Result<RegisterResponse>.Fail("Email is already registered", 409);
 
         var existingUsername = await users
-            .Find(Builders<User>.Filter.Eq(u => u.Username, normalizedUsername))
+            .Find(Builders<User>.Filter.Regex(u => u.Username,
+                new BsonRegularExpression($"^{Regex.Escape(normalizedUsername)}$", "i")))
             .FirstOrDefaultAsync(ct);
         if (existingUsername is not null)
             return Result<RegisterResponse>.Fail("Username is already taken", 409);

@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGuilds, useCreateGuild } from '@/features/guilds/hooks';
-import { createGuildSchema, type CreateGuildFormData } from '@/features/guilds/schemas';
+import { createGuildSchema, type CreateGuildFormData, type CreateGuildInput } from '@/features/guilds/schemas';
 import { useGameSearch } from '@/features/games/hooks';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuthStore } from '@/stores/authStore';
@@ -373,7 +374,7 @@ function CreateGuildModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     formState: { errors },
     reset,
     setValue,
-  } = useForm<CreateGuildFormData>({
+  } = useForm<CreateGuildInput, unknown, CreateGuildFormData>({
     resolver: zodResolver(createGuildSchema),
     defaultValues: { isPublic: true, gameIds: [] },
   });
@@ -524,7 +525,9 @@ function CreateGuildModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
             animate={{ opacity: 1 }}
             className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger"
           >
-            {(createGuild.error as any)?.response?.data?.title ?? 'Failed to create guild. Please try again.'}
+            {axios.isAxiosError<{ title?: string }>(createGuild.error)
+              ? createGuild.error.response?.data?.title ?? 'Failed to create guild. Please try again.'
+              : 'Failed to create guild. Please try again.'}
           </motion.p>
         )}
 

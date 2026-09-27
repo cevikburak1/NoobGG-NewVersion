@@ -245,6 +245,10 @@ npm run preview   # optional: local preview of the production bundle
 
 Configuration is read from `appsettings.json`, `appsettings.{Environment}.json`, environment variables, and command-line arguments (standard ASP.NET Core). For local secrets, prefer **[User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets)** or environment variables rather than committing credentials.
 
+Production startup requires the environment variables `MongoDb__ConnectionString`, `Redis__ConnectionString`, `Jwt__Secret`, `Email__SmtpHost`, `Email__SmtpUsername`, `Email__SmtpPassword`, `Email__FromEmail`, and `Cors__AllowedOrigins__0`. Development uses a temporary random JWT signing key and logs verification codes when SMTP is not configured. `DemoSeed__Enabled=true` enables sample accounts only in Development; the Compose setup opts in explicitly. A seeded player can sign in with `Player_0006` and `Test1234!`. Rotate any SMTP password previously committed to Git.
+
+Checkout is unavailable until a real `IPaymentProvider` is configured. No plan is assigned by the placeholder provider. The API still exposes plans and order status; verified payment events are the only route from checkout to an assigned subscription.
+
 ### Important settings (keys only)
 
 | Section | Purpose |

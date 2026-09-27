@@ -1013,7 +1013,7 @@ function ConfirmActionView({
     reviewNote,
     suspendDuration,
   );
-  const composedNoteLength = composedPayload.reviewNote?.length ?? 0;
+  const composedNoteLength = composedPayload.reason?.length ?? 0;
   const isNoteTooLong = composedNoteLength > noteLimit;
   const requiresNote =
     action === 'warn' || action === 'suspend' || action === 'ban';
@@ -1130,28 +1130,14 @@ function mapActionToReviewRequest(
   duration?: SuspensionDuration,
 ): ReviewReportRequest {
   const trimmed = note.trim();
-  switch (action) {
-    case 'warn':
-      return {
-        status: 'Reviewed',
-        reviewNote: `[Warning] ${trimmed}`.trim(),
-      };
-    case 'suspend':
-      return {
-        status: 'Resolved',
-        reviewNote: `[Suspended: ${duration ?? '7d'}] ${trimmed}`.trim(),
-      };
-    case 'ban':
-      return {
-        status: 'Resolved',
-        reviewNote: `[Banned] ${trimmed}`.trim(),
-      };
-    case 'dismiss':
-      return {
-        status: 'Dismissed',
-        reviewNote: trimmed.length > 0 ? trimmed : undefined,
-      };
-  }
+  const days = Number((duration ?? '7d').replace('d', ''));
+  return {
+    action,
+    reason: trimmed || undefined,
+    endsAt: action === 'suspend'
+      ? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+      : undefined,
+  };
 }
 
 function formatRelativeTime(dateStr: string): string {

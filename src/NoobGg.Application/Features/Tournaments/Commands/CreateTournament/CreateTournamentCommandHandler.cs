@@ -28,6 +28,15 @@ public class CreateTournamentCommandHandler : IRequestHandler<CreateTournamentCo
         var userId = _currentUser.UserId;
         var username = _currentUser.Username ?? "Unknown";
 
+        if (request.SeasonId is not null)
+        {
+            var seasons = _mongoContext.GetCollection<Season>(CollectionNames.Seasons);
+            var season = await seasons.Find(s => s.Id == request.SeasonId).FirstOrDefaultAsync(ct);
+            if (season is null || season.GameId != request.GameId ||
+                request.RegistrationDeadline > season.EndsAt || season.EndsAt <= DateTime.UtcNow)
+                return Result<TournamentDetailResponse>.Fail("Season is unavailable for this game", 400);
+        }
+
         var games = _mongoContext.GetCollection<Game>(CollectionNames.Games);
         var game = await games.Find(g => g.Id == request.GameId && g.IsActive).FirstOrDefaultAsync(ct);
         if (game is null)
@@ -56,6 +65,7 @@ public class CreateTournamentCommandHandler : IRequestHandler<CreateTournamentCo
             GameId = request.GameId,
             OrganizerId = userId,
             GuildId = request.GuildId,
+            SeasonId = request.SeasonId,
             Format = request.Format,
             Status = TournamentStatus.Registration,
             MaxParticipants = request.MaxParticipants,

@@ -9,6 +9,7 @@ export { Card, CardHeader, CardTitle, CardContent } from './card';
 export { Tabs } from './tabs';
 export { Toggle } from './toggle';
 export { ProgressBar } from './progressBar';
+export { Pagination } from './pagination';
 export { AnimatedPage } from './animatedPage';
 export { staggerContainer, staggerItem, fadeInUp, scaleIn } from './animations';
 export { ToastProvider, useToast } from './toast';

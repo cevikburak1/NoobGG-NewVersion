@@ -1,10 +1,16 @@
 using System.Text;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
 using Microsoft.OpenApi.Models;
 using NoobGg.Api.Services;
 using NoobGg.Application.Common.Interfaces;
 using NoobGg.Infrastructure.Auth;
+using NoobGg.Application.Common.Constants;
+using NoobGg.Domain.Entities;
+using NoobGg.Api.Hubs;
 
 namespace NoobGg.Api.Extensions;
 
@@ -60,6 +66,22 @@ public static class ServiceCollectionExtensions
                     }
 
                     return Task.CompletedTask;
+                },
+                OnTokenValidated = async context =>
+                {
+                    var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (string.IsNullOrWhiteSpace(userId))
+                    {
+                        context.Fail("Missing user identity");
+                        return;
+                    }
+
+                    var mongo = context.HttpContext.RequestServices.GetRequiredService<IMongoContext>();
+                    var users = mongo.GetCollection<User>(CollectionNames.Users);
+                    var user = await users.Find(u => u.Id == userId)
+                        .FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+                    if (user is null || user.IsBanned || user.SuspendedUntil > DateTime.UtcNow)
+                        context.Fail("Account is restricted");
                 }
             };
         });
@@ -124,7 +146,7 @@ public static class ServiceCollectionExtensions
     {
         var redisConnectionString = configuration.GetValue<string>("Redis:ConnectionString") ?? "localhost:6379";
 
-        services.AddSignalR()
+        services.AddSignalR(options => options.AddFilter(typeof(RestrictedUserHubFilter)))
             .AddStackExchangeRedis(redisConnectionString, options =>
             {
                 options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("NoobGg", StackExchange.Redis.RedisChannel.PatternMode.Literal);

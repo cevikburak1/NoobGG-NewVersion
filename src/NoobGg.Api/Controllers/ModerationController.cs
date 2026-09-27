@@ -45,8 +45,9 @@ public class ModerationController : ApiControllerBase
         var command = new ReviewReportCommand
         {
             ReportId = id,
-            NewStatus = request.Status,
-            ReviewNote = request.ReviewNote
+            Action = request.Action,
+            Reason = request.Reason,
+            EndsAt = request.EndsAt
         };
 
         var result = await Mediator.Send(command);
@@ -54,4 +55,4 @@ public class ModerationController : ApiControllerBase
     }
 }
 
-public record ReviewReportRequest(ReportStatus Status, string? ReviewNote);
+public record ReviewReportRequest(string Action, string? Reason, DateTime? EndsAt);

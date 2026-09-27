@@ -7,6 +7,7 @@ interface BadgeProps {
   variant?: BadgeVariant;
   children: ReactNode;
   className?: string;
+  size?: 'sm' | 'md';
 }
 
 const variantStyles: Record<BadgeVariant, string> = {
@@ -18,12 +19,13 @@ const variantStyles: Record<BadgeVariant, string> = {
   success: 'bg-success/20 text-success',
 };
 
-export function Badge({ variant = 'default', children, className }: BadgeProps) {
+export function Badge({ variant = 'default', children, className, size = 'md' }: BadgeProps) {
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
         variantStyles[variant],
+        size === 'sm' && 'px-1.5 py-0.5 text-[10px]',
         className,
       )}
     >

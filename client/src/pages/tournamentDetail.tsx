@@ -8,6 +8,7 @@ import {
   Modal,
   Select,
   AnimatedPage,
+  Pagination,
   staggerContainer,
   staggerItem,
   useToast,
@@ -23,6 +24,7 @@ import {
 import type { TournamentEntryResponse, TournamentMatchResponse } from '@/features/tournaments/types';
 import { BracketView } from '@/components/tournaments/bracketView';
 import { cn } from '@/lib/cn';
+import { usePagination } from '@/hooks/usePagination';
 
 const STATUS_BADGE_MAP: Record<string, { variant: 'default' | 'primary' | 'accent' | 'danger' | 'warning' | 'success'; label: string }> = {
   Registration: { variant: 'primary', label: 'Registration Open' },
@@ -141,12 +143,22 @@ function ReportResultModal({
           label="Select Match"
           placeholder="Choose a match..."
           value={selectedMatchId}
-          onChange={(e) => { setSelectedMatchId(e.target.value); setSelectedWinnerId(''); }}
+          onChange={(e) => {
+            setSelectedMatchId(e.target.value);
+            setSelectedWinnerId(pendingMatches.find((m) => m.id === e.target.value)?.proposedWinnerId ?? '');
+          }}
           options={pendingMatches.map((m) => ({
             value: m.id,
             label: `Match ${m.matchNumber}: ${m.participant1Name ?? 'BYE'} vs ${m.participant2Name ?? 'BYE'}`,
           }))}
         />
+        {selectedMatch && (
+          <p className="text-xs text-foreground-muted">
+            {selectedMatch.proposedWinnerId
+              ? 'A result was proposed. Confirm it or ask the organizer to resolve a disagreement.'
+              : 'The first participant submits a proposal; the opponent or organizer confirms it.'}
+          </p>
+        )}
         {selectedMatch && (
           <Select
             label="Winner"
@@ -170,6 +182,7 @@ function ReportResultModal({
 export default function TournamentDetailPage() {
   const { tournamentId } = useParams<{ tournamentId: string }>();
   const { data: tournament, isLoading, error } = useTournamentDetail(tournamentId);
+  const participantPage = usePagination(tournament?.entries.slice().sort((a, b) => a.seed - b.seed) ?? [], 12, tournamentId);
   const user = useAuthStore((s) => s.user);
   const { addToast } = useToast();
 
@@ -304,7 +317,7 @@ export default function TournamentDetailPage() {
                   Generate Bracket
                 </Button>
               )}
-              {isOrganizer && isInProgress && pendingMatches.length > 0 && (
+              {(isOrganizer || tournament.isParticipant) && isInProgress && pendingMatches.length > 0 && (
                 <Button variant="secondary" onClick={() => setShowReportModal(true)}>
                   Report Result
                 </Button>
@@ -375,14 +388,15 @@ export default function TournamentDetailPage() {
                 <p className="mt-3 text-sm text-foreground-muted">No participants yet. Be the first to join!</p>
               </div>
             ) : (
+              <>
               <motion.div variants={staggerContainer} initial="hidden" animate="show" className="space-y-1">
-                {tournament.entries
-                  .slice()
-                  .sort((a, b) => a.seed - b.seed)
-                  .map((entry, i) => (
-                    <ParticipantRow key={entry.id} entry={entry} index={i} />
+                {participantPage.items.map((entry, i) => (
+                    <ParticipantRow key={entry.id} entry={entry} index={(participantPage.page - 1) * participantPage.pageSize + i} />
                   ))}
               </motion.div>
+              <Pagination className="mt-4" page={participantPage.page} pageSize={participantPage.pageSize}
+                totalItems={participantPage.totalItems} onPageChange={participantPage.setPage} />
+              </>
             )}
           </motion.div>
         )}

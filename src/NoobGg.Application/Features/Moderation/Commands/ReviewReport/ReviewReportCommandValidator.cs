@@ -1,5 +1,4 @@
 using FluentValidation;
-using NoobGg.Domain.Enums;
 
 namespace NoobGg.Application.Features.Moderation.Commands.ReviewReport;
 
@@ -10,11 +9,15 @@ public class ReviewReportCommandValidator : AbstractValidator<ReviewReportComman
         RuleFor(x => x.ReportId)
             .NotEmpty().WithMessage("ReportId is required");
 
-        RuleFor(x => x.NewStatus)
-            .Must(s => s is ReportStatus.Reviewed or ReportStatus.Resolved or ReportStatus.Dismissed)
-            .WithMessage("Status must be Reviewed, Resolved, or Dismissed");
+        RuleFor(x => x.Action)
+            .Must(a => a is "warn" or "suspend" or "ban" or "dismiss")
+            .WithMessage("Action must be warn, suspend, ban, or dismiss");
 
-        RuleFor(x => x.ReviewNote)
-            .MaximumLength(2000).When(x => x.ReviewNote is not null);
+        RuleFor(x => x.Reason)
+            .NotEmpty().When(x => x.Action is "warn" or "suspend" or "ban")
+            .MaximumLength(2000);
+
+        RuleFor(x => x.EndsAt)
+            .NotNull().GreaterThan(DateTime.UtcNow).When(x => x.Action == "suspend");
     }
 }

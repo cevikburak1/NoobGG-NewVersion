@@ -1,13 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useMyFavorites, useToggleFavorite } from '@/features/favorites/hooks';
-import { Button, AnimatedPage, Spinner, staggerContainer, staggerItem } from '@/components/ui';
+import { Button, AnimatedPage, Spinner, Pagination, staggerContainer, staggerItem } from '@/components/ui';
+import { usePagination } from '@/hooks/usePagination';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { useToast } from '@/components/ui/toast';
 import type { FavoritePlayerResponse } from '@/features/favorites/types';
 
 export default function FavoritesPage() {
   const { data: favorites, isLoading } = useMyFavorites();
+  const favoritePage = usePagination(favorites ?? [], 12);
   const navigate = useNavigate();
   const { addToast } = useToast();
 
@@ -24,13 +26,14 @@ export default function FavoritesPage() {
             <Spinner size="lg" />
           </div>
         ) : favorites && favorites.length > 0 ? (
+          <div>
           <motion.div
             variants={staggerContainer}
             initial="hidden"
             animate="show"
             className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
           >
-            {favorites.map((fav) => (
+            {favoritePage.items.map((fav) => (
               <motion.div key={fav.userId} variants={staggerItem}>
                 <FavoriteCard
                   favorite={fav}
@@ -40,6 +43,9 @@ export default function FavoritesPage() {
               </motion.div>
             ))}
           </motion.div>
+          <Pagination className="mt-4" page={favoritePage.page} pageSize={favoritePage.pageSize}
+            totalItems={favoritePage.totalItems} onPageChange={favoritePage.setPage} />
+          </div>
         ) : (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}

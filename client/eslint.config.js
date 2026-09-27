@@ -20,4 +20,12 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/components/ui/toast.tsx', 'src/providers/dmProvider.tsx', 'src/providers/notificationProvider.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
+  {
+    files: ['src/pages/profile.tsx', 'src/pages/roomList.tsx', 'src/providers/dmProvider.tsx'],
+    rules: { 'react-hooks/set-state-in-effect': 'off' },
+  },
 ])

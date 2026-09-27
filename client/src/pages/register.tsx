@@ -6,6 +6,7 @@ import { registerSchema } from '@/features/auth/schemas';
 import type { RegisterFormData } from '@/features/auth/schemas';
 import { useRegister } from '@/features/auth/hooks';
 import { Button, Input } from '@/components/ui';
+import { useTranslation } from 'react-i18next';
 
 const formAnimation = {
   hidden: { opacity: 0 },
@@ -21,6 +22,7 @@ const itemAnimation = {
 };
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const registerMutation = useRegister();
 
@@ -46,15 +48,15 @@ export default function RegisterPage() {
       className="flex flex-col gap-5"
     >
       <motion.div variants={itemAnimation}>
-        <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
-        <p className="mt-1 text-sm text-foreground-muted">Join the gaming community in seconds</p>
+        <h1 className="text-2xl font-bold text-foreground">{t('Create your account')}</h1>
+        <p className="mt-1 text-sm text-foreground-muted">{t('Join the gaming community in seconds')}</p>
       </motion.div>
 
       <motion.div variants={itemAnimation}>
         <Input
           id="email"
           type="email"
-          label="Email"
+          label={t('Email')}
           placeholder="your@email.com"
           error={errors.email?.message}
           {...register('email')}
@@ -64,8 +66,8 @@ export default function RegisterPage() {
       <motion.div variants={itemAnimation}>
         <Input
           id="username"
-          label="Username"
-          placeholder="Choose a cool username"
+          label={t('Username')}
+          placeholder={t('Choose a cool username')}
           error={errors.username?.message}
           {...register('username')}
         />
@@ -75,8 +77,8 @@ export default function RegisterPage() {
         <Input
           id="password"
           type="password"
-          label="Password"
-          placeholder="Min 6 characters"
+          label={t('Password')}
+          placeholder={t('Min 8 characters')}
           error={errors.password?.message}
           {...register('password')}
         />
@@ -102,7 +104,7 @@ export default function RegisterPage() {
               ))}
             </div>
             <p className={`mt-1 text-xs ${passwordStrength.textColor}`}>
-              {passwordStrength.label}
+              {t(passwordStrength.label)}
             </p>
           </motion.div>
         )}
@@ -114,32 +116,32 @@ export default function RegisterPage() {
           animate={{ opacity: 1, x: 0 }}
           className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger"
         >
-          {(registerMutation.error as { response?: { data?: { title?: string } } })?.response?.data?.title ?? 'Registration failed. Please try again.'}
+          {(registerMutation.error as { response?: { data?: { title?: string } } })?.response?.data?.title ?? t('Registration failed. Please try again.')}
         </motion.p>
       )}
 
       <motion.div variants={itemAnimation}>
         <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
           <Button type="submit" isLoading={registerMutation.isPending} className="w-full">
-            Create account
+            {t('Create account')}
           </Button>
         </motion.div>
       </motion.div>
 
       <motion.p variants={itemAnimation} className="text-center text-xs text-foreground-subtle">
-        By signing up, you agree to our Terms of Service and Privacy Policy
+        {t('Your account is ready after email verification.')}
       </motion.p>
 
       <motion.div variants={itemAnimation} className="flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-foreground-subtle">or</span>
+        <span className="text-xs text-foreground-subtle">{t('or')}</span>
         <div className="h-px flex-1 bg-border" />
       </motion.div>
 
       <motion.p variants={itemAnimation} className="text-center text-sm text-foreground-muted">
-        Already have an account?{' '}
+        {t('Already have an account?')}{' '}
         <Link to="/login" className="font-medium text-primary hover:text-primary-hover transition-colors">
-          Sign in
+          {t('Sign in')}
         </Link>
       </motion.p>
     </motion.form>
@@ -148,7 +150,7 @@ export default function RegisterPage() {
 
 function getPasswordStrength(password: string) {
   let score = 0;
-  if (password.length >= 6) score++;
+  if (password.length >= 8) score++;
   if (password.length >= 10) score++;
   if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password) || /[^A-Za-z0-9]/.test(password)) score++;

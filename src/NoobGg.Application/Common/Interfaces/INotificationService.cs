@@ -15,4 +15,6 @@ public interface INotificationService
     Task SendBlockListChangedAsync(string userId1, string userId2, bool isBlocked, CancellationToken ct = default);
 
     Task SendFriendListChangedAsync(string userId1, string userId2, CancellationToken ct = default);
+
+    Task ForceDisconnectAsync(string userId, string reason, CancellationToken ct = default);
 }

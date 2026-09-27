@@ -32,6 +32,14 @@ export function createChatConnection(getAccessToken: () => string | null): HubCo
     .build();
 }
 
+export function createGuildChatConnection(getAccessToken: () => string | null): HubConnection {
+  return new HubConnectionBuilder()
+    .withUrl(`${BASE_URL}/hubs/guild-chat`, { accessTokenFactory: () => getAccessToken() ?? '' })
+    .withAutomaticReconnect(retryPolicy)
+    .configureLogging(LogLevel.Warning)
+    .build();
+}
+
 export function createDmConnection(getAccessToken: () => string | null): HubConnection {
   return new HubConnectionBuilder()
     .withUrl(`${BASE_URL}/hubs/dm`, {

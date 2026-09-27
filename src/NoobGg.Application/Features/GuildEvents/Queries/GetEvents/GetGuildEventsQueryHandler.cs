@@ -58,7 +58,9 @@ public class GetGuildEventsQueryHandler : IRequestHandler<GetGuildEventsQuery, R
             e.Title, e.Description,
             e.StartsAt, e.EndsAt,
             e.GameId, e.TournamentId,
-            e.CreatedAt)).ToList();
+            e.CreatedAt,
+            e.GoingUserIds.Count,
+            e.GoingUserIds.Contains(_currentUser.UserId))).ToList();
 
         return Result<GuildEventListResponse>.Success(
             new GuildEventListResponse(responses, (int)totalCount));

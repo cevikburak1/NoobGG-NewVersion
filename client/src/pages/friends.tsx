@@ -8,7 +8,8 @@ import {
   useRejectFriendRequest,
   useRemoveFriend,
 } from '@/features/friends/hooks';
-import { Button, Badge, AnimatedPage, Spinner, staggerContainer, staggerItem } from '@/components/ui';
+import { Button, Badge, AnimatedPage, Spinner, Pagination, staggerContainer, staggerItem } from '@/components/ui';
+import { usePagination } from '@/hooks/usePagination';
 import { UserAvatar } from '@/components/common/userAvatar';
 import { useToast } from '@/components/ui/toast';
 
@@ -16,6 +17,9 @@ export default function FriendsPage() {
   const [activeTab, setActiveTab] = useState<'friends' | 'requests'>('friends');
   const { data: friends, isLoading: friendsLoading } = useFriends();
   const { data: pendingRequests, isLoading: requestsLoading } = usePendingRequests();
+  const friendPage = usePagination(friends ?? [], 9);
+  const incomingPage = usePagination(pendingRequests?.incoming ?? [], 9);
+  const outgoingPage = usePagination(pendingRequests?.outgoing ?? [], 9);
   const acceptRequest = useAcceptFriendRequest();
   const rejectRequest = useRejectFriendRequest();
   const removeFriend = useRemoveFriend();
@@ -96,8 +100,9 @@ export default function FriendsPage() {
               {friendsLoading ? (
                 <div className="flex justify-center py-20"><Spinner size="lg" /></div>
               ) : friends && friends.length > 0 ? (
+                <>
                 <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {friends.map((friend) => (
+                  {friendPage.items.map((friend) => (
                     <motion.div key={friend.id} variants={staggerItem}>
                       <div className="group flex items-center gap-4 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-primary/30">
                         <Link to={`/profile/${friend.userId}`}>
@@ -135,6 +140,9 @@ export default function FriendsPage() {
                     </motion.div>
                   ))}
                 </motion.div>
+                <Pagination className="mt-4" page={friendPage.page} pageSize={friendPage.pageSize}
+                  totalItems={friendPage.totalItems} onPageChange={friendPage.setPage} />
+                </>
               ) : (
                 <EmptyState
                   icon="👥"
@@ -160,7 +168,7 @@ export default function FriendsPage() {
                         Incoming Requests
                       </h3>
                       <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {pendingRequests!.incoming.map((req) => (
+                        {incomingPage.items.map((req) => (
                           <motion.div key={req.friendshipId} variants={staggerItem}>
                             <div className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4">
                               <Link to={`/profile/${req.userId}`}>
@@ -197,6 +205,8 @@ export default function FriendsPage() {
                           </motion.div>
                         ))}
                       </motion.div>
+                      <Pagination className="mt-4" page={incomingPage.page} pageSize={incomingPage.pageSize}
+                        totalItems={incomingPage.totalItems} onPageChange={incomingPage.setPage} />
                     </div>
                   )}
 
@@ -206,7 +216,7 @@ export default function FriendsPage() {
                         Sent Requests
                       </h3>
                       <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {pendingRequests!.outgoing.map((req) => (
+                        {outgoingPage.items.map((req) => (
                           <motion.div key={req.friendshipId} variants={staggerItem}>
                             <div className="flex items-center gap-4 rounded-xl border border-border bg-surface p-4">
                               <Link to={`/profile/${req.userId}`}>
@@ -235,6 +245,8 @@ export default function FriendsPage() {
                           </motion.div>
                         ))}
                       </motion.div>
+                      <Pagination className="mt-4" page={outgoingPage.page} pageSize={outgoingPage.pageSize}
+                        totalItems={outgoingPage.totalItems} onPageChange={outgoingPage.setPage} />
                     </div>
                   )}
 

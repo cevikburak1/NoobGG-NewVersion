@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { api } from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlans, useMySubscription, useCancelSubscription } from '@/features/subscriptions/hooks';
 import { useAuthStore } from '@/stores/authStore';
@@ -18,12 +22,23 @@ const tierGradients: Record<string, string> = {
 };
 
 export default function SubscriptionsPage() {
+  const navigate = useNavigate();
+  const { addToast } = useToast();
   const isAuth = useAuthStore((s) => s.isAuthenticated());
-  const { data: planData, isLoading: plansLoading } = usePlans();
+  const { data: planData, isLoading: plansLoading, isError: plansError } = usePlans();
   const { data: subscription } = useMySubscription();
   const cancelSubscription = useCancelSubscription();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const checkoutStatus = useQuery({
+    queryKey: ['checkout-status'],
+    queryFn: async () => (await api.get<{ available: boolean }>('/api/subscriptions/checkout/status')).data,
+  });
+  const checkout = useMutation({
+    mutationFn: async (planId: string) => (await api.post<{ checkoutUrl: string }>('/api/subscriptions/checkout', { planId })).data,
+    onSuccess: ({ checkoutUrl }) => window.location.assign(checkoutUrl),
+    onError: () => addToast({ title: 'Checkout unavailable', message: 'Payment could not be started.', type: 'error' }),
+  });
 
   if (plansLoading) {
     return (
@@ -33,9 +48,11 @@ export default function SubscriptionsPage() {
     );
   }
 
-  const plans = planData?.plans
-    ? [...planData.plans].sort((a, b) => a.sortOrder - b.sortOrder)
-    : mockPlans;
+  if (plansError || !planData) {
+    return <div className="py-24 text-center text-foreground-muted">Plans are unavailable right now.</div>;
+  }
+
+  const plans = [...planData.plans].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const currentTier = subscription?.tier ?? planData?.currentTier ?? 'Free';
 
@@ -137,6 +154,11 @@ export default function SubscriptionsPage() {
               isCurrentPlan={plan.tier === currentTier}
               isAuth={isAuth}
               onCancel={() => setShowCancelModal(true)}
+              canCheckout={checkoutStatus.data?.available === true}
+              onCheckout={() => {
+                if (!isAuth) navigate('/login');
+                else checkout.mutate(plan.id);
+              }}
             />
           ))}
         </motion.div>
@@ -207,6 +229,8 @@ function PlanCard({
   isCurrentPlan,
   isAuth,
   onCancel,
+  canCheckout,
+  onCheckout,
 }: {
   plan: PlanResponse;
   index: number;
@@ -214,6 +238,8 @@ function PlanCard({
   isCurrentPlan: boolean;
   isAuth: boolean;
   onCancel: () => void;
+  canCheckout: boolean;
+  onCheckout: () => void;
 }) {
   const yearlyPrice = plan.price * 12 * 0.8;
   const displayPrice = billingPeriod === 'yearly'
@@ -305,8 +331,11 @@ function PlanCard({
               <Button
                 variant={plan.isHighlighted ? 'primary' : 'outline'}
                 className="w-full"
+                disabled={plan.price === 0 || !canCheckout}
+                title={!canCheckout ? 'Checkout will be available when a payment provider is configured' : undefined}
+                onClick={onCheckout}
               >
-                {plan.price === 0 ? 'Get Started' : isAuth ? 'Upgrade' : 'Sign Up'}
+                {plan.price === 0 ? 'Free plan' : canCheckout ? (isAuth ? 'Upgrade' : 'Sign in to upgrade') : 'Checkout unavailable'}
               </Button>
             </motion.div>
           )}
@@ -418,79 +447,14 @@ function FaqItem({ question, answer, index }: { question: string; answer: string
   );
 }
 
-const mockPlans: PlanResponse[] = [
-  {
-    id: 'free',
-    name: 'Free',
-    description: 'Perfect for getting started',
-    tier: 'Free',
-    price: 0,
-    currency: 'USD',
-    intervalMonths: 1,
-    features: [
-      'Join unlimited rooms',
-      'Basic profile',
-      'Real-time chat',
-      'Game search',
-    ],
-    maxRoomsPerDay: 3,
-    maxGameProfiles: 2,
-    isHighlighted: false,
-    sortOrder: 0,
-  },
-  {
-    id: 'plus',
-    name: 'Plus',
-    description: 'For dedicated gamers',
-    tier: 'Plus',
-    price: 4.99,
-    currency: 'USD',
-    intervalMonths: 1,
-    features: [
-      'Everything in Free',
-      'Create unlimited rooms',
-      'Priority matchmaking',
-      'Custom room tags',
-      'Premium badge',
-      'Advanced filters',
-    ],
-    maxRoomsPerDay: 10,
-    maxGameProfiles: 5,
-    isHighlighted: true,
-    sortOrder: 1,
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    description: 'For competitive teams',
-    tier: 'Pro',
-    price: 9.99,
-    currency: 'USD',
-    intervalMonths: 1,
-    features: [
-      'Everything in Plus',
-      'Unlimited rooms per day',
-      'Team management tools',
-      'Analytics dashboard',
-      'Voice channel integration',
-      'Priority support',
-      'Custom themes',
-    ],
-    maxRoomsPerDay: 999,
-    maxGameProfiles: 20,
-    isHighlighted: false,
-    sortOrder: 2,
-  },
-];
-
 const faqs = [
   {
     question: 'Can I change my plan at any time?',
-    answer: 'Yes! You can upgrade or downgrade your plan at any time. When upgrading, you\'ll get immediate access to new features. When downgrading, changes take effect at the end of your billing period.',
+    answer: 'Plan changes will be available after checkout is configured.',
   },
   {
     question: 'What payment methods do you accept?',
-    answer: 'We accept all major credit cards (Visa, Mastercard, Amex), PayPal, and crypto payments. All transactions are secured with industry-standard encryption.',
+    answer: 'A payment provider has not been configured yet.',
   },
   {
     question: 'Is there a free trial?',

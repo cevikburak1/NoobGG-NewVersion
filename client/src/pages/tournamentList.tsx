@@ -15,6 +15,9 @@ import {
   useToast,
 } from '@/components/ui';
 import { useTournaments, useCreateTournament } from '@/features/tournaments/hooks';
+import { SeasonHub, type Season } from '@/components/tournament/seasonHub';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import type { CreateTournamentPayload, TournamentListItemResponse } from '@/features/tournaments/types';
 
 const STATUS_FILTERS = ['All', 'Registration', 'InProgress', 'Completed'] as const;
@@ -120,6 +123,7 @@ function CreateTournamentModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
     name: '',
     description: '',
     gameId: '',
+    seasonId: '',
     format: '0',
     maxParticipants: '8',
     registrationDeadline: '',
@@ -128,6 +132,12 @@ function CreateTournamentModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const updateField = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
+
+  const seasons = useQuery({
+    queryKey: ['seasons', form.gameId],
+    queryFn: async () => (await api.get<Season[]>('/api/seasons', { params: { gameId: form.gameId } })).data,
+    enabled: Boolean(form.gameId),
+  });
 
   const handleSubmit = () => {
     if (!form.name.trim() || !form.gameId.trim() || !form.registrationDeadline) {
@@ -139,6 +149,7 @@ function CreateTournamentModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       name: form.name.trim(),
       description: form.description.trim() || undefined,
       gameId: form.gameId.trim(),
+      seasonId: form.seasonId || undefined,
       format: Number(form.format),
       maxParticipants: Number(form.maxParticipants) || 8,
       registrationDeadline: new Date(form.registrationDeadline).toISOString(),
@@ -152,7 +163,7 @@ function CreateTournamentModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
       onSuccess: () => {
         addToast({ title: 'Tournament created', message: `${payload.name} is live!`, type: 'success' });
         onClose();
-        setForm({ name: '', description: '', gameId: '', format: '0', maxParticipants: '8', registrationDeadline: '', prizeBadges: '' });
+        setForm({ name: '', description: '', gameId: '', seasonId: '', format: '0', maxParticipants: '8', registrationDeadline: '', prizeBadges: '' });
       },
       onError: () => {
         addToast({ title: 'Error', message: 'Failed to create tournament.', type: 'error' });
@@ -182,6 +193,10 @@ function CreateTournamentModal({ isOpen, onClose }: { isOpen: boolean; onClose: 
           value={form.gameId}
           onChange={(e) => updateField('gameId', e.target.value)}
         />
+        {(seasons.data?.length ?? 0) > 0 && (
+          <Select label="Season" value={form.seasonId} onChange={(event) => updateField('seasonId', event.target.value)}
+            options={[{ value: '', label: 'No season' }, ...(seasons.data ?? []).map((season) => ({ value: season.id, label: season.name }))]} />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Select
             label="Format"
@@ -240,6 +255,7 @@ export default function TournamentListPage() {
   return (
     <AnimatedPage>
       <div className="mx-auto max-w-6xl px-4 py-6 lg:px-8">
+        <SeasonHub />
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}

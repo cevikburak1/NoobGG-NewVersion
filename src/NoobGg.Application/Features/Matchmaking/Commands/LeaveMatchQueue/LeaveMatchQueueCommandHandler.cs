@@ -31,7 +31,8 @@ public class LeaveMatchQueueCommandHandler : IRequestHandler<LeaveMatchQueueComm
             e => e.UserId == userId &&
                  (e.Status == MatchQueueEntryStatus.Searching ||
                   e.Status == MatchQueueEntryStatus.FallbackSuggested ||
-                  e.Status == MatchQueueEntryStatus.Matched),
+                  e.Status == MatchQueueEntryStatus.Matched ||
+                  e.Status == MatchQueueEntryStatus.Matching),
             Builders<MatchQueueEntry>.Update
                 .Set(e => e.Status, MatchQueueEntryStatus.Cancelled)
                 .Set(e => e.UpdatedAt, DateTime.UtcNow),

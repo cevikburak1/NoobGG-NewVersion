@@ -45,20 +45,39 @@ public class CloseRoomCommandHandler : IRequestHandler<CloseRoomCommand, Result>
             return Result.Fail("Only the room owner can close the room", 403);
 
         var members = await roomMembers
-            .Find(m => m.RoomId == request.RoomId && m.UserId != callerId)
+            .Find(m => m.RoomId == request.RoomId)
             .ToListAsync(ct);
 
-        await _roomNotification.NotifyRoomClosedAsync(request.RoomId, ct);
+        var sessions = _mongoContext.GetCollection<GameSession>(CollectionNames.GameSessions);
+        if (members.Count > 1)
+        {
+            await sessions.UpdateOneAsync(s => s.RoomId == room.Id,
+                Builders<GameSession>.Update.SetOnInsert(s => s.Id, Guid.NewGuid().ToString())
+                    .SetOnInsert(s => s.RoomId, room.Id)
+                    .SetOnInsert(s => s.GameId, room.GameId)
+                    .SetOnInsert(s => s.RoomTitle, room.Title)
+                    .SetOnInsert(s => s.OwnerId, callerId)
+                    .SetOnInsert(s => s.Region, room.Region)
+                    .SetOnInsert(s => s.Language, room.Language)
+                    .SetOnInsert(s => s.ParticipantIds, members.Select(m => m.UserId).Distinct().ToList())
+                    .SetOnInsert(s => s.EndedAt, DateTime.UtcNow),
+                new UpdateOptions { IsUpsert = true }, ct);
+        }
+
+        try { await _roomNotification.NotifyRoomClosedAsync(request.RoomId, ct); }
+        catch { /* Persisted closure must not depend on real-time delivery. */ }
 
         foreach (var m in members)
         {
-            await _notificationService.CreateAsync(
-                m.UserId,
-                NotificationType.RoomClosed,
-                "Removed from room",
-                $"You were removed from \"{room.Title}\" because it was closed by the owner",
-                new Dictionary<string, string> { { "roomId", request.RoomId } },
-                ct);
+            if (m.UserId == callerId) continue;
+            try
+            {
+                await _notificationService.CreateAsync(
+                    m.UserId, NotificationType.RoomClosed, "Removed from room",
+                    $"You were removed from \"{room.Title}\" because it was closed by the owner",
+                    new Dictionary<string, string> { { "roomId", request.RoomId } }, ct);
+            }
+            catch { /* Continue closing the room if a notification fails. */ }
         }
 
         var roomFilter = Builders<RoomMember>.Filter.Eq(m => m.RoomId, request.RoomId);
@@ -70,7 +89,8 @@ public class CloseRoomCommandHandler : IRequestHandler<CloseRoomCommand, Result>
             rooms.DeleteOneAsync(r => r.Id == request.RoomId, ct)
         );
 
-        await _roomNotification.NotifyRoomListChangedAsync(ct);
+        try { await _roomNotification.NotifyRoomListChangedAsync(ct); }
+        catch { /* Clients will refresh the room list on their next request. */ }
 
         return Result.Success();
     }

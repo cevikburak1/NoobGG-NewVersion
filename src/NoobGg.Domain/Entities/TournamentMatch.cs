@@ -10,6 +10,8 @@ public class TournamentMatch : BaseEntity
     public string? Participant1Id { get; set; }
     public string? Participant2Id { get; set; }
     public string? WinnerId { get; set; }
+    public string? ProposedWinnerId { get; set; }
+    public string? ProposedByUserId { get; set; }
     public TournamentMatchStatus Status { get; set; } = TournamentMatchStatus.Pending;
     public string? NextMatchId { get; set; }
     public string? LoserNextMatchId { get; set; }

@@ -49,6 +49,9 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         if (user.IsBanned)
             return Result<AuthResponse>.Fail($"Account is banned: {user.BanReason ?? "No reason provided"}", 403);
 
+        if (user.SuspendedUntil > DateTime.UtcNow)
+            return Result<AuthResponse>.Fail($"Account is suspended until {user.SuspendedUntil:O}", 403);
+
         var settingsCol = _mongoContext.GetCollection<UserSettings>(CollectionNames.UserSettings);
         var userSettings = await settingsCol.Find(s => s.UserId == user.Id).FirstOrDefaultAsync(ct);
         var isDeactivated = userSettings?.IsDeactivated ?? false;

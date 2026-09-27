@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import type { HubConnection } from '@microsoft/signalr';
 import { useQueryClient } from '@tanstack/react-query';
-import { createNotificationConnection, startConnection, stopConnection, type ConnectionStatus } from '@/lib/signalr';
+import { createNotificationConnection, startConnection, stopConnection } from '@/lib/signalr';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/components/ui/toast';
 import { queryKeys } from '@/lib/queryKeys';

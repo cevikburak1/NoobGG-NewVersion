@@ -1,24 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #0a0a0f;
-  --color-surface: #13131a;
-  --color-surface-hover: #1a1a24;
-  --color-surface-active: #22222e;
-  --color-border: #2a2a3a;
-  --color-border-hover: #3a3a4e;
+  --color-background: #080e12;
+  --color-surface: #111b20;
+  --color-surface-hover: #1b282e;
+  --color-surface-active: #24363a;
+  --color-border: #294047;
+  --color-border-hover: #3b5960;
 
   --color-foreground: #e4e4ed;
   --color-foreground-muted: #8888a0;
   --color-foreground-subtle: #5a5a72;
 
-  --color-primary: #7c3aed;
-  --color-primary-hover: #8b5cf6;
+  --color-primary: #22cdbd;
+  --color-primary-hover: #3de4d0;
   --color-primary-foreground: #ffffff;
 
-  --color-accent: #06d6a0;
-  --color-accent-hover: #0be8b0;
-  --color-accent-foreground: #0a0a0f;
+  --color-accent: #ffca67;
+  --color-accent-hover: #ffdc91;
+  --color-accent-foreground: #12181c;
 
   --color-danger: #ef4444;
   --color-danger-hover: #f87171;
@@ -39,6 +39,7 @@
 body {
   font-family: var(--font-sans);
   min-height: 100vh;
+  background: var(--color-background);
 }
 
 /* Custom scrollbar for the gaming aesthetic */

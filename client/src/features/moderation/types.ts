@@ -33,8 +33,9 @@ export interface ReportDetailResponse {
 }
 
 export interface ReviewReportRequest {
-  status: ReportStatus;
-  reviewNote?: string;
+  action: ReviewAction;
+  reason?: string;
+  endsAt?: string;
 }
 
 export interface CreateReportRequest {
