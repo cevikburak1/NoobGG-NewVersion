@@ -12,7 +12,7 @@ function visiblePixels(buffer: Buffer): number {
 
 test('landing scene renders on desktop and mobile', async ({ page }, testInfo) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'NoobGg' })).toBeVisible();
+  await expect(page.getByTestId('landing-title')).toBeVisible();
   const canvas = page.locator('canvas').first();
   await expect(canvas).toBeVisible();
   await page.waitForTimeout(700);
@@ -44,5 +44,5 @@ test('static scene appears when WebGL is unavailable', async ({ page }) => {
   });
   await page.goto('/');
   await expect(page.getByTestId('scene-fallback')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'NoobGg' })).toBeVisible();
+  await expect(page.getByTestId('landing-title')).toBeVisible();
 });

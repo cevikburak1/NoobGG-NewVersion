@@ -45,6 +45,7 @@ jobs:
       - run: npm run test:e2e
         env:
           E2E_API: '1'
+          E2E_DEMO200: '1'
       - if: always()
         run: docker compose down
         working-directory: .

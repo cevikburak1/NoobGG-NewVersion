@@ -15,5 +15,6 @@ public class UserSubscription : BaseEntity
     public string? PaymentProvider { get; set; }
     public string? ExternalSubscriptionId { get; set; }
 
-    public bool IsActive => Status == SubscriptionStatus.Active && DateTime.UtcNow < EndDate;
+    public bool IsActive => (Status == SubscriptionStatus.Active || Status == SubscriptionStatus.Cancelled)
+        && StartDate <= DateTime.UtcNow && DateTime.UtcNow < EndDate;
 }

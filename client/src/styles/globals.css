@@ -1,62 +1,65 @@
 @import "tailwindcss";
-
 @theme {
-  --color-background: #080e12;
-  --color-surface: #111b20;
-  --color-surface-hover: #1b282e;
-  --color-surface-active: #24363a;
-  --color-border: #294047;
-  --color-border-hover: #3b5960;
-
-  --color-foreground: #e4e4ed;
-  --color-foreground-muted: #8888a0;
-  --color-foreground-subtle: #5a5a72;
-
-  --color-primary: #22cdbd;
-  --color-primary-hover: #3de4d0;
-  --color-primary-foreground: #ffffff;
-
-  --color-accent: #ffca67;
-  --color-accent-hover: #ffdc91;
-  --color-accent-foreground: #12181c;
-
-  --color-danger: #ef4444;
-  --color-danger-hover: #f87171;
-  --color-danger-foreground: #ffffff;
-
-  --color-warning: #f59e0b;
-  --color-success: #10b981;
-  --color-info: #3b82f6;
-
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-background: #0c0e14;
+  --color-surface: #141720;
+  --color-surface-hover: #1c202c;
+  --color-surface-active: #262c39;
+  --color-border: #292e3c;
+  --color-border-hover: #444c60;
+  --color-foreground: #f3f4f8;
+  --color-foreground-muted: #a5adbf;
+  --color-foreground-subtle: #818ca2;
+  --color-primary: #c5f277;
+  --color-primary-hover: #d8ffa0;
+  --color-primary-foreground: #15200b;
+  --color-accent: #bba4fb;
+  --color-accent-hover: #d0bdff;
+  --color-accent-foreground: #20152f;
+  --color-danger: #ff7a8e;
+  --color-danger-hover: #ff9bac;
+  --color-danger-foreground: #280d15;
+  --color-warning: #edc77b;
+  --color-success: #70dbb4;
+  --color-info: #8db4ff;
+  --radius-sm: .5rem;
+  --radius-md: .75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque", "Plus Jakarta Sans Variable", ui-sans-serif, sans-serif;
 }
-
-body {
-  font-family: var(--font-sans);
-  min-height: 100vh;
-  background: var(--color-background);
-}
-
-/* Custom scrollbar for the gaming aesthetic */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-hover);
+:root { color-scheme: dark; }
+html { scroll-padding-top: 5rem; }
+body { margin: 0; font-family: var(--font-sans); min-height: 100dvh; background: var(--color-background); }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -.025em; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled), select { cursor: pointer; }
+::selection { color: #15200b; background: #c5f277; }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+img { max-width: 100%; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #343b4d; border-radius: 20px; }
+::-webkit-scrollbar-thumb:hover { background: #566077; }
+.app-shell { background: linear-gradient(140deg, #14192155, transparent 45%); }
+.app-content h1 { font-weight: 800; }
+.app-content .grid > * { min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: .6rem; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .19em; color: var(--color-primary); }
+.eyebrow::before { content: ''; width: 1.25rem; height: 2px; background: currentColor; }
+.surface-panel { border: 1px solid var(--color-border); border-radius: 1.25rem; background: var(--color-surface); box-shadow: 0 8px 32px #00000014; }
+.page-hero { position: relative; isolation: isolate; overflow: hidden; border: 1px solid #c5f27720; border-radius: 1.5rem; padding: 1.75rem; background: linear-gradient(110deg, #1e2922, #171d25 55%, #242039); }
+.page-hero::after { position: absolute; content: ''; z-index: -1; inset: 0; background-image: linear-gradient(#ffffff04 1px, transparent 1px), linear-gradient(90deg, #ffffff04 1px, transparent 1px); background-size: 32px 32px; mask-image: linear-gradient(90deg, transparent, black); }
+.room-card { box-shadow: 0 4px 24px #00000012; }
+.room-card:hover { box-shadow: 0 14px 40px #00000035; }
+.game-tile { position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(145deg, #253843, #242239); }
+.game-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.game-tile:hover img { transform: scale(1.06); }
+.game-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #0b0d1408 20%, #0b0d14ed); pointer-events: none; }
+.landing-grid { background-image: linear-gradient(#ffffff04 1px, transparent 1px), linear-gradient(90deg, #ffffff04 1px, transparent 1px); background-size: 64px 64px; }
+.orbit-ring { position: absolute; border: 1px solid #c5f27725; border-radius: 50%; transform: rotate(-25deg); }
+.hide-scrollbar { scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+@media (min-width: 640px) { .page-hero { padding: 2.25rem; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

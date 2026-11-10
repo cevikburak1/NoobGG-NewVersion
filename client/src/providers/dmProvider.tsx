@@ -90,12 +90,13 @@ export function DmProvider({ children }: { children: ReactNode }) {
       stopConnection(conn);
       connectionRef.current = null;
     };
-  }, [accessToken, qc]);
+  }, [accessToken, qc, addToast]);
 
   const sendMessage = useCallback(async (conversationId: string, content: string) => {
-    if (connectionRef.current) {
-      await connectionRef.current.invoke('SendDirectMessage', conversationId, content);
+    if (!connectionRef.current || connectionRef.current.state !== 'Connected') {
+      throw new Error('Chat is disconnected. Please try again when reconnected.');
     }
+    await connectionRef.current.invoke('SendDirectMessage', conversationId, content);
   }, []);
 
   const markAsRead = useCallback(async (conversationId: string) => {

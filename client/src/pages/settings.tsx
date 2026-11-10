@@ -50,8 +50,9 @@ export default function SettingsPage() {
   return (
     <AnimatedPage>
       <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <div className="page-hero">
+          <p className="eyebrow mb-3">Your space, your rules</p>
+          <h1 className="text-3xl font-extrabold text-foreground">Settings</h1>
           <p className="mt-1 text-sm text-foreground-muted">
             Manage your privacy, notifications, and account preferences.
           </p>

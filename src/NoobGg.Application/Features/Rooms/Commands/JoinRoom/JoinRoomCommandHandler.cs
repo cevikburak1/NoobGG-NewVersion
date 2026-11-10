@@ -46,6 +46,9 @@ public class JoinRoomCommandHandler : IRequestHandler<JoinRoomCommand, Result>
         if (room is null)
             return Result.Fail("Room not found", 404);
 
+        if (!room.IsPublic)
+            return Result.Fail("Accept a room invitation to join this private room", 403);
+
         var hasBlock = await blocksCol.Find(b =>
             (b.BlockerId == room.CreatorId && b.BlockedUserId == userId) ||
             (b.BlockerId == userId && b.BlockedUserId == room.CreatorId)

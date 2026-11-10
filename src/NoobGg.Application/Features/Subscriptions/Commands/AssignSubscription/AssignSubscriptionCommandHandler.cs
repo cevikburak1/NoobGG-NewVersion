@@ -47,7 +47,7 @@ public class AssignSubscriptionCommandHandler
         // Expire any currently active subscription for this user
         var activeFilter = Builders<UserSubscription>.Filter.And(
             Builders<UserSubscription>.Filter.Eq(s => s.UserId, request.UserId),
-            Builders<UserSubscription>.Filter.Eq(s => s.Status, SubscriptionStatus.Active));
+            Builders<UserSubscription>.Filter.In(s => s.Status, [SubscriptionStatus.Active, SubscriptionStatus.Cancelled]));
 
         await subs.UpdateManyAsync(
             activeFilter,

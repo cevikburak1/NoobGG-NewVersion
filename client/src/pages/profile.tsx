@@ -174,7 +174,7 @@ export default function ProfilePage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl border border-border bg-surface"
+          className="relative overflow-hidden rounded-3xl border border-border bg-surface shadow-[0_8px_40px_#00000020]"
         >
           {profile.bannerUrl ? (
             <div className="h-32 sm:h-40">
@@ -185,7 +185,7 @@ export default function ProfilePage() {
               />
             </div>
           ) : (
-            <div className="h-32 bg-gradient-to-r from-primary/20 via-primary/10 to-accent/20 sm:h-40">
+            <div className="landing-grid h-32 bg-linear-to-r from-primary/15 via-surface to-accent/20 sm:h-44">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_var(--color-primary)_0%,_transparent_60%)] opacity-20" />
             </div>
           )}

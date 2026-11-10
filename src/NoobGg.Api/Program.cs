@@ -87,16 +87,25 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddHostedService<DatabaseMigrationRunner>();
-builder.Services.AddHostedService<CommunityBoardBackfillInitializer>();
+var coherentDemo = builder.Environment.IsDevelopment() && builder.Configuration["DemoSeed:Scenario"] == "coherent-200";
+if (!coherentDemo) builder.Services.AddHostedService<CommunityBoardBackfillInitializer>();
 builder.Services.AddHostedService<MongoIndexInitializer>();
 builder.Services.AddHostedService<PlanSeedInitializer>();
 if (builder.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("DemoSeed:Enabled"))
 {
+    if (coherentDemo)
+    {
+        builder.Configuration["Rawg:EnableSync"] = "false";
+        builder.Services.AddHostedService<CoherentDemoSeeder>();
+    }
+    else
+    {
     builder.Services.AddHostedService<FakeDataSeeder>();
     builder.Services.AddHostedService<EloDataSeeder>();
     builder.Services.AddHostedService<GuildLeaderboardRoomDemoSeeder>();
     builder.Services.AddHostedService<CommunityFeaturesDemoSeeder>();
     builder.Services.AddHostedService<RoomMemberProfileSeeder>();
+    }
 }
 builder.Services.AddHostedService<GameCatalogSyncJob>();
 builder.Services.AddHostedService<GuildEventReminderJob>();

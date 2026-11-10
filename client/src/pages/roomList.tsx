@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRooms, useCreateRoom } from '@/features/rooms/hooks';
@@ -26,6 +26,8 @@ import { RecentJoinedRoomsMini } from '@/components/activity/recentActivitySurfa
 import { useToast } from '@/components/ui/toast';
 import { useJoinMatchQueue, useLeaveMatchQueue, useMatchQueueStatus } from '@/features/matchmaking/hooks';
 import { queryKeys } from '@/lib/queryKeys';
+import { GameArtwork } from '@/components/common/gameArtwork';
+import { Icon } from '@/components/ui/icon';
 
 interface AvailableGame {
   id: string;
@@ -96,6 +98,7 @@ export default function RoomListPage() {
   const { data: filterGames } = useGameSearch(debouncedGameFilter);
 
   const { data, isLoading } = useRooms(filters);
+  const { data: featuredGames } = useGameBrowse({ multiplayer: true, pageSize: 6 });
   const { data: recommendedRooms } = useRecommendedRooms(6);
 
   const hasFilters = !!(filters.gameId || filters.region || filters.language || filters.status);
@@ -133,8 +136,30 @@ export default function RoomListPage() {
           </motion.div>
         </div>
 
-        {isAuth ? <RecentJoinedRoomsMini /> : null}
-        {isAuth ? <ReplaySessions /> : null}
+        <section className="page-hero">
+          <div className="relative z-10 max-w-xl">
+            <p className="eyebrow mb-4">{t('Play your way')}</p>
+            <h2 className="max-w-xl text-3xl font-extrabold leading-tight sm:text-[32px]">{t('Make tonight a team game.')}</h2>
+            <p className="mt-3 max-w-sm text-xs leading-6 text-foreground-muted">{t('Pick a game, find your squad.')}</p>
+            <Link to="/discover" className="mt-4 inline-flex items-center gap-3 text-xs font-bold text-primary">{t('Discover')} <Icon name="arrow" className="h-4 w-4" /></Link>
+          </div>
+          <div aria-hidden="true" className="pointer-events-none absolute -right-4 bottom-0 hidden h-60 w-80 sm:block">
+            <div className="orbit-ring -right-4 top-8 h-44 w-72" /><div className="orbit-ring right-6 top-2 h-56 w-44" />
+            <div className="absolute right-12 top-10 flex h-32 w-32 rotate-[-12deg] items-center justify-center rounded-[32px] border border-primary/25 bg-primary/5 text-primary"><Icon name="game" className="h-20 w-20" /></div>
+            <div className="absolute bottom-4 left-8 rounded-xl border border-accent/30 bg-[#242232] p-3 text-accent"><Icon name="bolt" className="h-6 w-6" /></div>
+          </div>
+        </section>
+
+        {featuredGames?.items.length ? <section>
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-sm font-bold">{t('Browse by game')}</h2><button onClick={clearGameFilter} className="min-h-9 text-[10px] font-semibold text-primary">{t('All games')} ↗︎</button></div>
+          <div className="hide-scrollbar flex gap-3 overflow-x-auto pb-1">
+            {featuredGames.items.map(game => <button key={game.id} aria-pressed={filters.gameId === game.id} onClick={() => { setFilters(f => ({ ...f, gameId: game.id, page: 1 })); setGameFilterName(game.name); }} className={`game-tile relative h-24 min-w-36 flex-1 rounded-xl border text-left sm:h-28 ${filters.gameId === game.id ? 'border-primary ring-1 ring-primary' : 'border-border hover:border-border-hover'}`}>
+              <GameArtwork src={game.backgroundImageUrl} name={game.name} className="h-full w-full" />
+              <span className="absolute bottom-3 left-3 right-3 z-10 line-clamp-2 text-[10px] font-bold text-white">{game.name}</span>
+            </button>)}
+          </div>
+        </section> : null}
+
 
         {isAuth ? (
           <QuickMatchSection
@@ -267,6 +292,7 @@ export default function RoomListPage() {
           </motion.div>
         )}
 
+        <div className="flex items-center justify-between border-b border-border pb-4"><h2 className="flex items-center gap-2 text-sm font-bold"><span className="h-1.5 w-1.5 rounded-full bg-success" />{t('Rooms')}</h2><span className="text-[10px] text-foreground-subtle">{data?.totalCount ?? '—'} {t('total')}</span></div>
         {/* Room Grid */}
         {isLoading ? (
           <div className="flex justify-center py-20">
@@ -338,6 +364,7 @@ export default function RoomListPage() {
           </motion.div>
         )}
 
+        {isAuth && <details className="surface-panel p-4"><summary className="cursor-pointer text-xs font-semibold text-foreground-muted">{t('Pick up where you left off')}</summary><div className="mt-4 space-y-4"><RecentJoinedRoomsMini /><ReplaySessions /></div></details>}
         <CreateRoomModal
           isOpen={showCreateModal}
           onClose={() => setShowCreateModal(false)}
@@ -563,18 +590,14 @@ function RecommendedRoomCard({ room }: { room: RecommendedRoomResponse }) {
   const capacityPercent = room.maxMembers > 0 ? (room.currentMemberCount / room.maxMembers) * 100 : 0;
 
   return (
-    <Link to={`/rooms/${room.id}`}>
+    <Link to={`/rooms/${room.id}`} className="block min-w-0">
       <motion.div
         whileHover={{ y: -2 }}
         transition={{ duration: 0.2 }}
         className="group flex gap-3.5 rounded-xl border border-primary/15 bg-primary/3 p-3.5 transition-colors hover:border-primary/30 hover:bg-primary/6"
       >
         {room.gameImageUrl ? (
-          <img
-            src={room.gameImageUrl}
-            alt={room.gameName ?? ''}
-            className="h-14 w-20 shrink-0 rounded-lg object-cover"
-          />
+          <GameArtwork src={room.gameImageUrl} name={room.gameName ?? 'Game'} className="h-14 w-20 shrink-0 rounded-lg" />
         ) : (
           <div className="flex h-14 w-20 shrink-0 items-center justify-center rounded-lg bg-surface-hover text-lg">
             🎮
@@ -592,7 +615,7 @@ function RecommendedRoomCard({ room }: { room: RecommendedRoomResponse }) {
               {room.status}
             </Badge>
           </div>
-          <div className="mt-1 flex items-center gap-2 text-xs text-foreground-muted">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
             <span>{room.region}</span>
             <span className="text-foreground-subtle">·</span>
             <span>{room.currentMemberCount}/{room.maxMembers}</span>
@@ -617,20 +640,16 @@ function RoomCard({ room }: { room: RoomResponse }) {
   const isFull = capacityPercent >= 100;
 
   return (
-    <motion.div variants={staggerItem}>
-      <Link to={`/rooms/${room.id}`}>
+    <motion.div variants={staggerItem} className="min-w-0">
+      <Link to={`/rooms/${room.id}`} className="block min-w-0">
         <motion.div
           whileHover={{ y: -3 }}
           transition={{ duration: 0.2 }}
-          className="group relative overflow-hidden rounded-xl border border-border bg-surface transition-colors hover:border-primary/30"
+          className="room-card group relative overflow-hidden rounded-2xl border border-border bg-surface transition-colors hover:border-primary/40"
         >
           {room.gameImageUrl ? (
-            <div className="relative h-28 overflow-hidden">
-              <img
-                src={room.gameImageUrl}
-                alt={room.gameName ?? 'Game'}
-                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
+            <div className="relative h-36 overflow-hidden">
+              <GameArtwork src={room.gameImageUrl} name={room.gameName ?? 'Game'} className="h-full w-full transition-transform duration-500 group-hover:scale-105" />
               <div className="absolute inset-0 bg-linear-to-t from-surface via-surface/50 to-transparent" />
               {room.gameName && (
                 <span className="absolute bottom-2.5 left-3 rounded-md bg-black/50 px-2 py-0.5 text-xs font-medium text-white/90 backdrop-blur-sm">
@@ -645,7 +664,7 @@ function RoomCard({ room }: { room: RoomResponse }) {
               </Badge>
             </div>
           ) : (
-            <div className="relative flex h-20 items-center justify-center bg-linear-to-br from-primary/15 to-accent/10">
+            <div className="relative flex h-36 items-center justify-center bg-linear-to-br from-primary/15 to-accent/10">
               <span className="text-xs text-foreground-muted">{room.gameName ?? 'Unknown Game'}</span>
               <Badge
                 variant={statusColors[room.status] ?? 'default'}
@@ -656,7 +675,7 @@ function RoomCard({ room }: { room: RoomResponse }) {
             </div>
           )}
 
-          <div className="p-4">
+          <div className="p-5">
             <h3 className="font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
               {room.title}
             </h3>
@@ -725,7 +744,6 @@ function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     handleSubmit,
     control,
     setValue,
-    watch,
     formState: { errors },
     reset,
   } = useForm<CreateRoomFormData>({
@@ -733,7 +751,7 @@ function CreateRoomModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     defaultValues: { maxMembers: 5, isPublic: true },
   });
 
-  const selectedGameId = watch('gameId');
+  const selectedGameId = useWatch({ control, name: 'gameId' });
 
   const onSubmit = (data: CreateRoomFormData) => {
     createRoom.mutate(data, {

@@ -67,10 +67,10 @@ export default function GuildListPage() {
   return (
     <AnimatedPage>
       <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="page-hero flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
             <div className="flex items-baseline gap-3">
-              <h1 className="text-3xl font-bold text-foreground">Guilds</h1>
+              <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Guilds</h1>
               {data && (
                 <span className="text-sm text-foreground-subtle">{data.totalCount} total</span>
               )}
