@@ -12,6 +12,10 @@ jobs:
         image: mongo:7
         ports:
           - 27017:27017
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -21,6 +25,7 @@ jobs:
       - run: dotnet test NoobGg.sln --no-restore --configuration Release
         env:
           MONGO_TEST_URI: mongodb://localhost:27017
+          REDIS_TEST_URI: localhost:6379
 
   client:
     runs-on: ubuntu-latest
@@ -40,12 +45,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: docker compose up -d --build
         working-directory: .
-      - run: curl --retry 30 --retry-delay 2 --retry-connrefused --fail http://localhost:5000/api/subscriptions/checkout/status
+      - name: Wait for API dependencies and demo seed
+        run: curl --retry 60 --retry-all-errors --retry-delay 2 --retry-max-time 180 --max-time 5 --fail http://localhost:5000/api/health/ready
         working-directory: .
       - run: npm run test:e2e
         env:
           E2E_API: '1'
           E2E_DEMO200: '1'
+      - if: failure()
+        run: docker compose logs --tail 200 api mongo redis
+        working-directory: .
       - if: always()
         run: docker compose down
         working-directory: .

@@ -2,6 +2,8 @@
 
 Tarih: 10 Kasım 2026. İncelenen kaynak: `cevikburak1/NoobGG-NewVersion`, başlangıç commit'i `1fff9df` (master). Bu rapor mevcut kodun incelenmesine ve bu oturumda çalıştırılan testlere dayanır. Önceki raporlardaki eksikler güncel kodla yeniden karşılaştırılmıştır.
 
+Güncelleme: Bu belgedeki test sayıları ilk incelemeyi anlatır. Aynı gün sonraki düzeltmeler, güncel açık işler ve ayrıntılı bağımlılık/ürün haritası için [Ürün ve workflow yol haritası](NoobGG-Urun-ve-Workflow-Yol-Haritasi.md) belgesini esas alın. Plan seeder'ının mevcut fiyatları ezmesi giderildi; dependency readiness ve upload volume eklendi. Bunlar ödeme, kota ve restore gibi kalan açılış işlerini tamamlamaz.
+
 ## Karar
 
 Ürün, kontrollü bir ücretsiz beta için güçlü bir başlangıç sunuyor. Ücretli müşteriye açılış için henüz hazır değil. Temel engeller: gerçek ödeme sağlayıcısı bulunmaması, planda satılan limitlerin ilgili komutlarda uygulanmaması, hesap kurtarma ve kötüye kullanım korumalarının eksikliği, doğrulanmamış rekabet sonuçları ve üretim operasyonlarının kanıtlanmamış olması.

@@ -43,6 +43,7 @@ public class AddGameProfileCommandHandler : IRequestHandler<AddGameProfileComman
         {
             UserId = userId,
             GameId = request.GameId,
+            InGameName = request.InGameName?.Trim(),
             Rank = request.Rank,
             Role = request.Role,
             Region = request.Region,
@@ -70,7 +71,7 @@ public class AddGameProfileCommandHandler : IRequestHandler<AddGameProfileComman
             HoursPlayed = gp.HoursPlayed,
             LookingForTeam = gp.LookingForTeam,
             Note = gp.Note,
-            InGameName = request.InGameName,
+            InGameName = gp.InGameName,
             EloPoints = gp.EloPoints,
             RankTier = gp.RankTier.ToString()
         });

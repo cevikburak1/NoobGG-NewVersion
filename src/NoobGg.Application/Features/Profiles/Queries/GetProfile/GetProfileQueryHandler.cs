@@ -125,6 +125,7 @@ public class GetProfileQueryHandler : IRequestHandler<GetProfileQuery, Result<Pr
                 Id = gp.Id,
                 UserId = gp.UserId,
                 GameId = gp.GameId,
+                InGameName = gp.InGameName,
                 GameName = game?.Name ?? "Unknown",
                 GameImageUrl = game?.BackgroundImageUrl,
                 Rank = gp.Rank,

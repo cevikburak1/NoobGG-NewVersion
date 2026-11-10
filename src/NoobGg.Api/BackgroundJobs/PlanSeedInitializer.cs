@@ -6,9 +6,8 @@ using NoobGg.Domain.Entities;
 namespace NoobGg.Api.BackgroundJobs;
 
 /// <summary>
-/// Seeds/upserts the three default subscription plans on startup.
-/// Existing plans are updated with latest defaults (new fields, features, limits).
-/// Plan IDs are preserved on update to avoid breaking existing subscriptions.
+/// Adds missing default plans. Existing commercial terms must only change through
+/// explicit migrations or administration, never as a side effect of restarting.
 /// </summary>
 public class PlanSeedInitializer : IHostedService
 {
@@ -26,7 +25,7 @@ public class PlanSeedInitializer : IHostedService
         try
         {
             await UpsertPlansAsync(ct);
-            _logger.LogInformation("Subscription plans seeded/updated successfully");
+            _logger.LogInformation("Missing subscription plans seeded successfully");
         }
         catch (Exception ex)
         {
@@ -45,19 +44,19 @@ public class PlanSeedInitializer : IHostedService
             var filter = Builders<SubscriptionPlan>.Filter.Eq(p => p.Tier, config.Tier);
 
             var update = Builders<SubscriptionPlan>.Update
-                .Set(p => p.Name, config.Name)
-                .Set(p => p.Description, config.Description)
-                .Set(p => p.Tier, config.Tier)
-                .Set(p => p.Price, config.Price)
-                .Set(p => p.Currency, "USD")
-                .Set(p => p.IntervalMonths, config.IntervalMonths)
-                .Set(p => p.Features, config.Features)
-                .Set(p => p.MaxRoomsPerDay, config.MaxRoomsPerDay)
-                .Set(p => p.MaxGameProfiles, config.MaxGameProfiles)
-                .Set(p => p.IsHighlighted, config.IsHighlighted)
-                .Set(p => p.SortOrder, config.SortOrder)
-                .Set(p => p.IsActive, true)
-                .Set(p => p.UpdatedAt, DateTime.UtcNow)
+                .SetOnInsert(p => p.Name, config.Name)
+                .SetOnInsert(p => p.Description, config.Description)
+                .SetOnInsert(p => p.Tier, config.Tier)
+                .SetOnInsert(p => p.Price, config.Price)
+                .SetOnInsert(p => p.Currency, "USD")
+                .SetOnInsert(p => p.IntervalMonths, config.IntervalMonths)
+                .SetOnInsert(p => p.Features, config.Features)
+                .SetOnInsert(p => p.MaxRoomsPerDay, config.MaxRoomsPerDay)
+                .SetOnInsert(p => p.MaxGameProfiles, config.MaxGameProfiles)
+                .SetOnInsert(p => p.IsHighlighted, config.IsHighlighted)
+                .SetOnInsert(p => p.SortOrder, config.SortOrder)
+                .SetOnInsert(p => p.IsActive, true)
+                .SetOnInsert(p => p.UpdatedAt, DateTime.UtcNow)
                 .SetOnInsert(p => p.CreatedAt, DateTime.UtcNow)
                 .SetOnInsert(p => p.Id, Guid.NewGuid().ToString());
 
@@ -66,8 +65,6 @@ public class PlanSeedInitializer : IHostedService
 
             if (result.UpsertedId is not null)
                 _logger.LogInformation("Seeded new plan: {PlanName} ({Tier})", config.Name, config.Tier);
-            else if (result.ModifiedCount > 0)
-                _logger.LogInformation("Updated plan: {PlanName} ({Tier})", config.Name, config.Tier);
         }
     }
 }
