@@ -30,12 +30,9 @@ public class RedisCacheService : ICacheService
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiry = null, CancellationToken cancellationToken = default)
     {
         var serialized = JsonSerializer.Serialize(value, JsonOptions);
-        await _database.StringSetAsync(key, serialized);
-
-        if (expiry.HasValue)
-        {
-            await _database.KeyExpireAsync(key, expiry.Value);
-        }
+        // Value and TTL must be committed together: a crash between SET and EXPIRE
+        // could otherwise leave authorization snapshots cached indefinitely.
+        await _database.StringSetAsync(key, serialized, expiry.HasValue ? new Expiration(expiry.Value) : Expiration.Default);
     }
 
     public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)

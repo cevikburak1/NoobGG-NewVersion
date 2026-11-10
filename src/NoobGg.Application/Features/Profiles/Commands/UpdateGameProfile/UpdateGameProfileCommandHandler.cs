@@ -33,6 +33,7 @@ public class UpdateGameProfileCommandHandler : IRequestHandler<UpdateGameProfile
             return Result<GameProfileResponse>.NotFound("Game profile not found");
 
         var updates = new List<UpdateDefinition<UserGameProfile>>();
+        if (request.InGameName is not null) updates.Add(Builders<UserGameProfile>.Update.Set(g => g.InGameName, request.InGameName.Trim()));
 
         if (request.Rank is not null) updates.Add(Builders<UserGameProfile>.Update.Set(g => g.Rank, request.Rank));
         if (request.Role is not null) updates.Add(Builders<UserGameProfile>.Update.Set(g => g.Role, request.Role));
@@ -58,6 +59,7 @@ public class UpdateGameProfileCommandHandler : IRequestHandler<UpdateGameProfile
             Id = updated.Id,
             UserId = updated.UserId,
             GameId = updated.GameId,
+            InGameName = updated.InGameName,
             GameName = game?.Name ?? "Unknown",
             GameImageUrl = game?.BackgroundImageUrl,
             Rank = updated.Rank,

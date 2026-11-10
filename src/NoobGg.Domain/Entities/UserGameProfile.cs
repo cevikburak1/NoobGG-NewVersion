@@ -7,6 +7,7 @@ public class UserGameProfile : BaseEntity
 {
     public string UserId { get; set; } = string.Empty;
     public string GameId { get; set; } = string.Empty;
+    public string? InGameName { get; set; }
     public string Rank { get; set; } = string.Empty;
     public string? Role { get; set; }
     public Region Region { get; set; }

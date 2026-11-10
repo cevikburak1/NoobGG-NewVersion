@@ -5,6 +5,8 @@ services:
       dockerfile: NoobGg.Api/Dockerfile
     ports:
       - "5000:5000"
+    volumes:
+      - upload_data:/app/wwwroot/uploads
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
@@ -14,11 +16,18 @@ services:
       - DemoSeed__Enabled=true
       - DemoSeed__Scenario=coherent-200
     depends_on:
-      - mongo
-      - redis
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   mongo:
     image: mongo:7
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     ports:
       - "27017:27017"
     volumes:
@@ -26,11 +35,17 @@ services:
 
   redis:
     image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
 
 volumes:
+  upload_data:
   mongo_data:
   redis_data:

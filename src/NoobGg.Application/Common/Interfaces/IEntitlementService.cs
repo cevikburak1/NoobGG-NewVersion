@@ -13,6 +13,7 @@ public interface IEntitlementService
 
 public class EntitlementSnapshot
 {
+    public DateTime? ValidUntil { get; init; }
     public SubscriptionTier Tier { get; init; }
     public string PlanName { get; init; } = "Free";
     public List<string> Features { get; init; } = [];

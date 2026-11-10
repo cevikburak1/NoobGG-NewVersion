@@ -12,6 +12,7 @@ public class EntitlementService : IEntitlementService
     private readonly IMongoContext _mongoContext;
     private readonly ICacheService _cacheService;
     private readonly ILogger<EntitlementService> _logger;
+    private readonly TimeProvider _clock;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
     private const string CachePrefix = "entitlement:";
@@ -19,11 +20,13 @@ public class EntitlementService : IEntitlementService
     public EntitlementService(
         IMongoContext mongoContext,
         ICacheService cacheService,
-        ILogger<EntitlementService> logger)
+        ILogger<EntitlementService> logger,
+        TimeProvider? clock = null)
     {
         _mongoContext = mongoContext;
         _cacheService = cacheService;
         _logger = logger;
+        _clock = clock ?? TimeProvider.System;
     }
 
     public async Task<bool> HasFeatureAsync(string userId, string featureKey, CancellationToken ct = default)
@@ -55,12 +58,19 @@ public class EntitlementService : IEntitlementService
         var cacheKey = CachePrefix + userId;
 
         var cached = await _cacheService.GetAsync<EntitlementSnapshot>(cacheKey, ct);
-        if (cached is not null)
+        if (cached is not null && cached.ValidUntil > _clock.GetUtcNow().UtcDateTime)
             return cached;
 
         var snapshot = await BuildSnapshotAsync(userId, ct);
+        if (snapshot.Tier != SubscriptionTier.Free && snapshot.ValidUntil <= _clock.GetUtcNow().UtcDateTime)
+            snapshot = await BuildFreeTierSnapshotAsync(ct);
 
-        await _cacheService.SetAsync(cacheKey, snapshot, CacheDuration, ct);
+        var ttl = CacheDuration;
+        if (snapshot.ValidUntil is { } expires)
+            ttl = expires - _clock.GetUtcNow().UtcDateTime;
+        if (ttl > CacheDuration) ttl = CacheDuration;
+        if (ttl > TimeSpan.Zero)
+            await _cacheService.SetAsync(cacheKey, snapshot, ttl, ct);
 
         return snapshot;
     }
@@ -75,14 +85,15 @@ public class EntitlementService : IEntitlementService
     private async Task<EntitlementSnapshot> BuildSnapshotAsync(string userId, CancellationToken ct)
     {
         var subs = _mongoContext.GetCollection<UserSubscription>(CollectionNames.UserSubscriptions);
+        var now = _clock.GetUtcNow().UtcDateTime;
         var activeSub = await subs
             .Find(s => s.UserId == userId && (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Cancelled)
-                && s.StartDate <= DateTime.UtcNow && s.EndDate > DateTime.UtcNow)
+                && s.StartDate <= now && s.EndDate > now)
             .SortByDescending(s => s.EndDate)
             .FirstOrDefaultAsync(ct);
 
-        if (activeSub is null || !activeSub.IsActive)
-            return BuildFreeTierSnapshot();
+        if (activeSub is null)
+            return await BuildFreeTierSnapshotAsync(ct);
 
         var plans = _mongoContext.GetCollection<SubscriptionPlan>(CollectionNames.SubscriptionPlans);
         var plan = await plans.Find(p => p.Id == activeSub.PlanId).FirstOrDefaultAsync(ct);
@@ -92,11 +103,12 @@ public class EntitlementService : IEntitlementService
             _logger.LogWarning(
                 "Active subscription {SubId} references missing plan {PlanId}",
                 activeSub.Id, activeSub.PlanId);
-            return BuildFreeTierSnapshot();
+            return await BuildFreeTierSnapshotAsync(ct);
         }
 
         return new EntitlementSnapshot
         {
+            ValidUntil = activeSub.EndDate,
             Tier = plan.Tier,
             PlanName = plan.Name,
             Features = plan.Features,
@@ -106,16 +118,19 @@ public class EntitlementService : IEntitlementService
         };
     }
 
-    private static EntitlementSnapshot BuildFreeTierSnapshot()
+    private async Task<EntitlementSnapshot> BuildFreeTierSnapshotAsync(CancellationToken ct)
     {
+        var plan = await _mongoContext.GetCollection<SubscriptionPlan>(CollectionNames.SubscriptionPlans)
+            .Find(p => p.Tier == SubscriptionTier.Free && p.IsActive).FirstOrDefaultAsync(ct);
         var free = PlanDefaults.Free;
         return new EntitlementSnapshot
         {
             Tier = SubscriptionTier.Free,
-            PlanName = free.Name,
-            Features = free.Features,
-            MaxRoomsPerDay = free.MaxRoomsPerDay,
-            MaxGameProfiles = free.MaxGameProfiles,
+            ValidUntil = _clock.GetUtcNow().UtcDateTime.Add(CacheDuration),
+            PlanName = plan?.Name ?? free.Name,
+            Features = plan?.Features ?? free.Features,
+            MaxRoomsPerDay = plan?.MaxRoomsPerDay ?? free.MaxRoomsPerDay,
+            MaxGameProfiles = plan?.MaxGameProfiles ?? free.MaxGameProfiles,
             HasPremiumBadge = false
         };
     }

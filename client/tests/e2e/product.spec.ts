@@ -110,6 +110,28 @@ test('scheduled cancellation keeps paid access until expiry', async ({ request }
   }
 });
 
+test('in-game name survives update and a fresh profile read', async ({ request }, info) => {
+  const member = await login(request, info.project.name === 'desktop' ? 'Player_0006' : 'Player_0007');
+  const headers = { Authorization: `Bearer ${member.accessToken}` };
+  const read = async () => {
+    const response = await request.get(`${API}/api/profiles/${member.user.id}/games`, { headers });
+    expect(response.ok(), await response.text()).toBe(true);
+    return response.json();
+  };
+  const profile = (await read())[0];
+  const update = (name: string) => request.put(`${API}/api/profiles/me/games/${profile.id}`, { headers, data: { inGameName: name } });
+  try {
+    const response = await update('  NoobGG#TR  ');
+    expect(response.ok(), await response.text()).toBe(true);
+    expect((await read()).find((p: { id: string }) => p.id === profile.id).inGameName).toBe('NoobGG#TR');
+    const full = await request.get(`${API}/api/profiles/${member.user.id}`, { headers });
+    expect(full.ok(), await full.text()).toBe(true);
+    expect(await full.text()).toContain('NoobGG#TR');
+  } finally {
+    expect((await update(profile.inGameName ?? '')).ok()).toBe(true);
+  }
+});
+
 test('private profile game endpoint enforces the same visibility rules', async ({ request }, info) => {
   const owner = await login(request, info.project.name === 'desktop' ? 'Player_0940' : 'Player_0942');
   const headers = { Authorization: `Bearer ${owner.accessToken}` };
