@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useConversations } from '@/features/dm/hooks';
 import { usePendingRequests } from '@/features/friends/hooks';
@@ -8,16 +8,16 @@ import { useTranslation } from 'react-i18next';
 
 const navItems = [
   { to: '/rooms', label: 'Rooms', icon: RoomsIcon },
-  { to: '/guilds', label: 'Guilds', icon: GuildsIcon },
   { to: '/discover', label: 'Discover', icon: DiscoverIcon },
+  { to: '/guilds', label: 'Guilds', icon: GuildsIcon },
   { to: '/community', label: 'Forum', icon: ForumIcon },
   { to: '/compare', label: 'Compare', icon: CompareIcon },
   { to: '/leaderboard', label: 'Leaderboard', icon: LeaderboardIcon },
   { to: '/tournaments', label: 'Tournaments', icon: TournamentIcon },
-  { to: '/notifications', label: 'Notifications', icon: NotificationsIcon, showNotificationBadge: true },
+  { to: '/messages', label: 'Messages', icon: MessagesIcon, showBadge: true },
   { to: '/friends', label: 'Friends', icon: FriendsIcon, showFriendBadge: true },
   { to: '/favorites', label: 'Favorites', icon: FavoritesIcon },
-  { to: '/messages', label: 'Messages', icon: MessagesIcon, showBadge: true },
+  { to: '/notifications', label: 'Notifications', icon: NotificationsIcon, showNotificationBadge: true },
   { to: '/subscriptions', label: 'Plans', icon: PlansIcon },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
@@ -40,23 +40,25 @@ export function Sidebar() {
   const pendingIncoming = pendingRequests?.incoming.length ?? 0;
 
   return (
-    <aside className="hidden w-60 shrink-0 border-r border-border bg-surface lg:block">
-      <nav className="flex flex-col gap-1 p-3">
-        <SectionLabel>{t('Main')}</SectionLabel>
-        {navItems.map((item) => {
+    <aside className="sticky top-16 hidden h-[calc(100dvh-4rem)] w-60 shrink-0 flex-col overflow-y-auto border-r border-border/70 bg-background/90 lg:flex xl:w-64">
+      <nav className="flex flex-col gap-1 px-4 py-6">
+        <div className="mb-4 flex items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-[.18em] text-foreground-subtle"><span className="h-1.5 w-1.5 rounded-full bg-primary" />{t('Your gaming space')}</div>
+        {navItems.map((item, index) => {
           let badgeCount = 0;
           if (item.showBadge && isAuth) badgeCount = totalUnread;
           if (item.showFriendBadge && isAuth) badgeCount = pendingIncoming;
           if (item.showNotificationBadge && isAuth) badgeCount = notificationUnread;
           return (
+            <div key={item.to}>
+              {[0, 4, 7, 11].includes(index) && <div className="mb-2 mt-5 px-3 text-[9px] font-bold uppercase tracking-[.2em] text-foreground-subtle">{t(index === 0 ? 'Explore' : index === 4 ? 'Competition' : index === 7 ? 'Connect' : 'Account')}</div>}
             <SidebarLink
-              key={item.to}
               to={item.to}
               icon={item.icon}
               badge={badgeCount}
             >
               {t(item.label)}
             </SidebarLink>
+            </div>
           );
         })}
 
@@ -71,6 +73,11 @@ export function Sidebar() {
           </>
         )}
       </nav>
+      <Link to="/subscriptions" className="mx-4 mb-5 mt-auto block rounded-2xl border border-accent/20 bg-linear-to-br from-accent/10 to-transparent p-4">
+        <span className="text-[9px] font-bold uppercase tracking-[.18em] text-accent">NOOBGG PLUS</span>
+        <p className="mt-2 font-display text-base font-bold text-foreground">{t('More ways to play.')}</p>
+        <span className="mt-3 flex items-center justify-between text-xs font-semibold text-accent">{t('Explore plans')} <span aria-hidden="true">↗︎</span></span>
+      </Link>
     </aside>
   );
 }
@@ -99,9 +106,9 @@ function SidebarLink({
       to={to}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+          'flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-[12px] font-medium transition-colors',
           isActive
-            ? 'bg-primary/10 text-primary border-l-2 border-primary -ml-[2px]'
+            ? 'bg-primary text-primary-foreground shadow-[0_4px_16px_#c5f27710]'
             : 'text-foreground-muted hover:bg-surface-hover hover:text-foreground',
         )
       }

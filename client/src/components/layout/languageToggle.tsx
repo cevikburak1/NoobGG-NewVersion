@@ -5,7 +5,7 @@ export function LanguageToggle() {
   return (
     <select aria-label="Language / Dil" title="Language / Dil" value={i18n.language}
       onChange={(event) => { void i18n.changeLanguage(event.target.value); }}
-      className="h-8 border border-border bg-surface px-1 text-xs font-semibold text-foreground outline-none focus:border-primary">
+      className="h-10 rounded-xl border border-border bg-surface px-2 text-xs font-semibold text-foreground outline-none focus:border-primary">
       <option value="tr">TR</option>
       <option value="en">EN</option>
     </select>

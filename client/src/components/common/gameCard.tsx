@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { GameResponse } from '@/features/games/types';
 import { Badge } from '@/components/ui';
+import { GameArtwork } from './gameArtwork';
 import { cn } from '@/lib/cn';
 
 interface GameCardProps {
@@ -13,27 +14,16 @@ interface GameCardProps {
 export function GameCard({ game, onClick, className }: GameCardProps) {
   const content = (
     <motion.div
-      whileHover={{ y: -4, scale: 1.02 }}
+      whileHover={{ y: -4 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'group relative overflow-hidden rounded-xl border border-border bg-surface transition-all',
+        'group relative overflow-hidden rounded-2xl border border-border bg-surface transition-colors',
         'hover:border-primary/30 hover:shadow-xl hover:shadow-primary/10',
         className,
       )}
     >
-      <div className="relative aspect-video overflow-hidden bg-surface-hover">
-        {game.backgroundImageUrl ? (
-          <img
-            src={game.backgroundImageUrl}
-            alt={game.name}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-4xl text-foreground-subtle">
-            🎮
-          </div>
-        )}
+      <div className="relative aspect-[16/10] overflow-hidden bg-surface-hover">
+        <GameArtwork src={game.backgroundImageUrl} name={game.name} className="h-full w-full" />
         <div className="absolute inset-0 bg-linear-to-t from-surface via-transparent to-transparent" />
         {game.metacritic != null && (
           <span className={cn(
@@ -46,7 +36,7 @@ export function GameCard({ game, onClick, className }: GameCardProps) {
           </span>
         )}
       </div>
-      <div className="p-4">
+      <div className="p-5">
         <h3 className="truncate font-semibold text-foreground group-hover:text-primary transition-colors">
           {game.name}
         </h3>
@@ -62,7 +52,7 @@ export function GameCard({ game, onClick, className }: GameCardProps) {
   );
 
   if (onClick) {
-    return <div onClick={onClick} className="cursor-pointer">{content}</div>;
+    return <button type="button" onClick={onClick} className="w-full text-left">{content}</button>;
   }
 
   return <Link to={`/games/${game.id}`}>{content}</Link>;

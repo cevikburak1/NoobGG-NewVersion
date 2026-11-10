@@ -12,26 +12,31 @@ import { RecentMessagedMini } from '@/components/activity/recentActivitySurfaces
 import type { ConversationResponse } from '@/features/dm/types';
 
 export default function MessagesPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const targetUser = searchParams.get('user');
 
   const user = useAuthStore((s) => s.user);
   const { data: conversations, isLoading: convsLoading } = useConversations();
   const createConversation = useCreateConversation();
-  const markRead = useMarkRead();
+  const { mutate: markRead } = useMarkRead();
   const { sendMessage: sendViaHub, status: dmStatus } = useDm();
   const { addToast } = useToast();
 
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const conversationCreatedRef = useRef(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const conversationTargetRef = useRef<string | null>(null);
 
   const { data: messages, isLoading: msgsLoading } = useMessages(activeConvId);
 
   useEffect(() => {
-    if (!targetUser || !conversations || activeConvId) return;
+    if (!targetUser) {
+      conversationTargetRef.current = null;
+      return;
+    }
+    if (!conversations || conversationTargetRef.current === targetUser) return;
+    conversationTargetRef.current = targetUser;
 
     const existing = conversations.find((c) => c.partnerId === targetUser);
     if (existing) {
@@ -39,15 +44,12 @@ export default function MessagesPage() {
       return;
     }
 
-    if (conversationCreatedRef.current) return;
-    conversationCreatedRef.current = true;
-
     createConversation.mutate(
       { participantId: targetUser },
       {
         onSuccess: (conv) => setActiveConvId(conv.id),
         onError: (err: unknown) => {
-          conversationCreatedRef.current = false;
+          conversationTargetRef.current = null;
           const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
             ?? 'Cannot start conversation with this user';
           addToast({ title: 'Error', message: msg, type: 'error' });
@@ -55,16 +57,17 @@ export default function MessagesPage() {
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetUser, conversations, activeConvId]);
+  }, [targetUser, conversations]);
 
   useEffect(() => {
     if (activeConvId) {
-      markRead.mutate(activeConvId);
+      markRead(activeConvId);
     }
-  }, [activeConvId]);
+  }, [activeConvId, markRead]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
@@ -97,9 +100,9 @@ export default function MessagesPage() {
   const { data: partnerPresence } = usePresence(activeConv?.partnerId);
 
   return (
-    <AnimatedPage className="h-[calc(100vh-4rem)]">
-      <div className="flex h-full rounded-xl border border-border overflow-hidden bg-surface">
-        <div className="w-72 border-r border-border flex flex-col shrink-0">
+    <AnimatedPage className="h-[calc(100dvh-10rem)] lg:h-[calc(100dvh-9rem)]">
+      <div className="flex h-full rounded-2xl border border-border overflow-hidden bg-surface shadow-[0_8px_36px_#00000020]">
+        <div className={`${activeConvId ? 'hidden md:flex' : 'flex'} w-full md:w-72 border-r border-border bg-background/40 flex-col shrink-0`}>
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-base font-bold text-foreground">Messages</h2>
             <div className="flex items-center gap-1.5">
@@ -147,10 +150,14 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`${activeConvId ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0`}>
           {activeConv ? (
             <>
               <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+                <Button variant="ghost" size="sm" aria-label="Back to conversations" className="md:hidden shrink-0" onClick={() => {
+                  setActiveConvId(null);
+                  setSearchParams({});
+                }}>←</Button>
                 <div className="relative">
                   <UserAvatar
                     username={activeConv.partnerUsername}
@@ -171,7 +178,7 @@ export default function MessagesPage() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
+              <div ref={messagesContainerRef} className="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2.5">
                 {msgsLoading ? (
                   <div className="flex justify-center py-8">
                     <Spinner />
@@ -183,6 +190,7 @@ export default function MessagesPage() {
                       return (
                         <motion.div
                           key={msg.id}
+                          data-testid="dm-message"
                           initial={{ opacity: 0, y: 4 }}
                           animate={{ opacity: 1, y: 0 }}
                           className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
@@ -209,7 +217,6 @@ export default function MessagesPage() {
                         </motion.div>
                       );
                     })}
-                    <div ref={messagesEndRef} />
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -238,7 +245,8 @@ export default function MessagesPage() {
                   </div>
                   <Button
                     onClick={handleSend}
-                    disabled={!messageInput.trim() || isSending}
+                    aria-label="Send message"
+                    disabled={!messageInput.trim() || isSending || dmStatus !== 'connected'}
                     isLoading={isSending}
                     className="shrink-0"
                   >

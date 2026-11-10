@@ -13,6 +13,7 @@ function modeForPath(pathname: string): SceneMode {
 export function ArenaBackdrop({ pathname }: { pathname: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fallbackRef = useRef<HTMLDivElement>(null);
+  const mode = modeForPath(pathname);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -42,11 +43,10 @@ export function ArenaBackdrop({ pathname }: { pathname: string }) {
     const group = new THREE.Group();
     scene.add(group);
 
-    const mode = modeForPath(pathname);
     const materials = [
-      new THREE.MeshStandardMaterial({ color: 0x20d6bd, metalness: 0.58, roughness: 0.28, transparent: true, opacity: 0.78 }),
-      new THREE.MeshStandardMaterial({ color: 0xff6e68, metalness: 0.5, roughness: 0.32, transparent: true, opacity: 0.72 }),
-      new THREE.MeshStandardMaterial({ color: 0xffd166, metalness: 0.52, roughness: 0.3, transparent: true, opacity: 0.74 }),
+      new THREE.MeshStandardMaterial({ color: 0xc5f277, metalness: 0.58, roughness: 0.28, transparent: true, opacity: 0.78 }),
+      new THREE.MeshStandardMaterial({ color: 0xbba4fb, metalness: 0.5, roughness: 0.32, transparent: true, opacity: 0.72 }),
+      new THREE.MeshStandardMaterial({ color: 0x91b8dc, metalness: 0.52, roughness: 0.3, transparent: true, opacity: 0.74 }),
     ];
     const shapes: THREE.Mesh[] = [];
     const addShape = (geometry: THREE.BufferGeometry, x: number, y: number, z: number, scale: number, color: number) => {
@@ -121,7 +121,7 @@ export function ArenaBackdrop({ pathname }: { pathname: string }) {
       });
       renderer.dispose();
     };
-  }, [pathname]);
+  }, [mode]);
 
   return (
     <>
@@ -130,7 +130,7 @@ export function ArenaBackdrop({ pathname }: { pathname: string }) {
         <div className="absolute right-[18%] top-[35%] h-28 w-28 rotate-12 border border-accent/60" />
         <div className="absolute bottom-[15%] left-[48%] h-36 w-36 rotate-45 border border-warning/50" />
       </div>
-      <canvas ref={canvasRef} aria-hidden="true" className={`pointer-events-none fixed inset-0 h-screen w-screen ${pathname === '/' ? 'opacity-65' : 'opacity-25'}`} />
+      <canvas ref={canvasRef} aria-hidden="true" className={`pointer-events-none fixed inset-0 h-screen w-screen ${pathname === '/' ? 'opacity-15' : 'opacity-[0.035]'}`} />
     </>
   );
 }

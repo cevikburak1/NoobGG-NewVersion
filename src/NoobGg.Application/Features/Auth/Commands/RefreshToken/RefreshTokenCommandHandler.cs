@@ -63,10 +63,15 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
             .Set(rt => rt.RevokedAt, DateTime.UtcNow)
             .Set(rt => rt.ReplacedByToken, newRefreshTokenString)
             .Set(rt => rt.UpdatedAt, DateTime.UtcNow);
-        await refreshTokens.UpdateOneAsync(
-            Builders<Domain.Entities.RefreshToken>.Filter.Eq(rt => rt.Id, storedToken.Id),
+        var rotated = await refreshTokens.UpdateOneAsync(
+            Builders<Domain.Entities.RefreshToken>.Filter.And(
+                Builders<Domain.Entities.RefreshToken>.Filter.Eq(rt => rt.Id, storedToken.Id),
+                Builders<Domain.Entities.RefreshToken>.Filter.Eq(rt => rt.RevokedAt, null),
+                Builders<Domain.Entities.RefreshToken>.Filter.Gt(rt => rt.ExpiresAt, DateTime.UtcNow)),
             revokeUpdate,
             cancellationToken: ct);
+        if (rotated.ModifiedCount == 0)
+            return Result<AuthResponse>.Unauthorized("Refresh token has already been used");
 
         var newRefreshToken = new Domain.Entities.RefreshToken
         {

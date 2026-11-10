@@ -12,10 +12,12 @@ namespace NoobGg.Application.Features.Rooms.Queries.GetRoomDetails;
 public class GetRoomDetailsQueryHandler : IRequestHandler<GetRoomDetailsQuery, Result<RoomDetailResponse>>
 {
     private readonly IMongoContext _mongoContext;
+    private readonly ICurrentUser _currentUser;
 
-    public GetRoomDetailsQueryHandler(IMongoContext mongoContext)
+    public GetRoomDetailsQueryHandler(IMongoContext mongoContext, ICurrentUser currentUser)
     {
         _mongoContext = mongoContext;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<RoomDetailResponse>> Handle(GetRoomDetailsQuery request, CancellationToken ct)
@@ -26,6 +28,11 @@ public class GetRoomDetailsQueryHandler : IRequestHandler<GetRoomDetailsQuery, R
 
         var room = await rooms.Find(r => r.Id == request.RoomId).FirstOrDefaultAsync(ct);
         if (room is null)
+            return Result<RoomDetailResponse>.NotFound("Room not found");
+
+        if (!room.IsPublic && (!_currentUser.IsAuthenticated ||
+            (room.CreatorId != _currentUser.UserId &&
+             !await roomMembers.Find(m => m.RoomId == room.Id && m.UserId == _currentUser.UserId).AnyAsync(ct))))
             return Result<RoomDetailResponse>.NotFound("Room not found");
 
         var members = await roomMembers.Find(m => m.RoomId == request.RoomId)

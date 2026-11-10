@@ -53,10 +53,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status !== 401 || originalRequest._retry || !authAccessor) {
+    if (error.response?.status !== 401 || !originalRequest || originalRequest._retry || !authAccessor
+      || originalRequest.url?.startsWith('/api/auth/')) {
       return Promise.reject(error);
     }
 
+    originalRequest._retry = true;
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -66,7 +68,6 @@ api.interceptors.response.use(
       });
     }
 
-    originalRequest._retry = true;
     isRefreshing = true;
 
     try {
@@ -74,6 +75,7 @@ api.interceptors.response.use(
 
       if (!refreshToken) {
         authAccessor.logout();
+        processQueue(error, null);
         return Promise.reject(error);
       }
 

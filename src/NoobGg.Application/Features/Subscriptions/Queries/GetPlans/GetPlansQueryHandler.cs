@@ -58,7 +58,8 @@ public class GetPlansQueryHandler : IRequestHandler<GetPlansQuery, Result<PlanCo
 
             var subs = _mongoContext.GetCollection<UserSubscription>(CollectionNames.UserSubscriptions);
             var activeSub = await subs
-                .Find(s => s.UserId == _currentUser.UserId && s.Status == SubscriptionStatus.Active)
+                .Find(s => s.UserId == _currentUser.UserId && (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Cancelled)
+                && s.StartDate <= DateTime.UtcNow && s.EndDate > DateTime.UtcNow)
                 .SortByDescending(s => s.EndDate)
                 .FirstOrDefaultAsync(ct);
 

@@ -8,6 +8,8 @@ import { useNotificationContext } from '@/providers/notificationProvider';
 import { useConversations } from '@/features/dm/hooks';
 import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from './languageToggle';
+import { Brand } from '@/components/common/brand';
+import { Icon } from '@/components/ui/icon';
 
 export function Navbar() {
   const { t } = useTranslation();
@@ -38,21 +40,16 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 h-16 border-b border-border bg-surface/80 backdrop-blur-md">
-      <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold text-primary">Noob</span>
-          <span className="text-xl font-bold text-accent">Gg</span>
+    <header className="sticky top-0 z-40 h-16 border-b border-border/80 bg-background/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-full items-center justify-between gap-2 px-4 md:gap-6 sm:px-6 lg:px-7">
+        <Brand />
+        <Link to="/discover" className="hidden w-full max-w-md items-center gap-3 rounded-xl border border-border bg-background/60 px-4 py-2.5 text-xs text-foreground-muted md:flex">
+          <Icon name="search" className="h-4 w-4" />
+          <span>{t('Search games and players')}</span>
+          <Icon name="arrow" className="ml-auto h-4 w-4" />
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
-          <NavLink to="/rooms">{t('Rooms')}</NavLink>
-          <NavLink to="/discover">{t('Discover')}</NavLink>
-          <NavLink to="/friends">{t('Friends')}</NavLink>
-          <NavLink to="/subscriptions">{t('Plans')}</NavLink>
-        </nav>
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           <LanguageToggle />
           {isAuth ? (
             <>
@@ -66,7 +63,7 @@ export function Navbar() {
               </Link>
               <div className="relative" ref={dropdownRef}>
                 <button
-                  onClick={() => setDropdownOpen((p) => !p)}
+                  aria-label={t('My Profile')} aria-expanded={dropdownOpen} aria-haspopup="true" onClick={() => setDropdownOpen((p) => !p)}
                   className="flex items-center gap-2 rounded-full bg-surface-hover px-2 py-1.5 text-sm font-medium text-foreground hover:bg-surface-active transition-colors"
                 >
                   <UserAvatar username={user?.username ?? ''} avatarUrl={user?.avatarUrl} size="xs" />
@@ -176,14 +173,6 @@ function DropdownItem({
         </span>
       )}
     </button>
-  );
-}
-
-function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
-  return (
-    <Link to={to} className="text-sm font-medium text-foreground-muted hover:text-foreground transition-colors">
-      {children}
-    </Link>
   );
 }
 

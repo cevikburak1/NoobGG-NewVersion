@@ -49,9 +49,13 @@ node_modules/
 dist/
 client/test-results/
 client/playwright-report/
+**/TestResults/
 
 ## Tasks
 tasks/
 
 ## Cursor
 .cursor/
+
+# Generated deterministic development artwork
+src/NoobGg.Api/wwwroot/uploads/demo200/

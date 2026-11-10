@@ -9,9 +9,10 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:5000
       - MongoDb__ConnectionString=mongodb://mongo:27017
-      - MongoDb__DatabaseName=noobgg
+      - MongoDb__DatabaseName=noobgg_demo_200
       - Redis__ConnectionString=redis:6379
       - DemoSeed__Enabled=true
+      - DemoSeed__Scenario=coherent-200
     depends_on:
       - mongo
       - redis

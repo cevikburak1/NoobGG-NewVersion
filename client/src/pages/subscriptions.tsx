@@ -6,6 +6,7 @@ import { useToast } from '@/components/ui/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePlans, useMySubscription, useCancelSubscription } from '@/features/subscriptions/hooks';
 import { useAuthStore } from '@/stores/authStore';
+import { Icon } from '@/components/ui/icon';
 import type { PlanResponse } from '@/features/subscriptions/types';
 import { Button, Modal, AnimatedPage, Spinner, staggerContainer, staggerItem } from '@/components/ui';
 
@@ -29,7 +30,6 @@ export default function SubscriptionsPage() {
   const { data: subscription } = useMySubscription();
   const cancelSubscription = useCancelSubscription();
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const checkoutStatus = useQuery({
     queryKey: ['checkout-status'],
     queryFn: async () => (await api.get<{ available: boolean }>('/api/subscriptions/checkout/status')).data,
@@ -63,15 +63,15 @@ export default function SubscriptionsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center"
+          className="page-hero text-center"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', bounce: 0.5, delay: 0.1 }}
-            className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent text-2xl shadow-lg shadow-primary/25"
+            className="mx-auto mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary"
           >
-            ✨
+            <Icon name="spark" className="h-6 w-6" />
           </motion.div>
           <h1 className="text-3xl font-bold text-foreground sm:text-4xl">
             Choose Your <span className="text-primary">Plan</span>
@@ -79,42 +79,6 @@ export default function SubscriptionsPage() {
           <p className="mx-auto mt-3 max-w-lg text-foreground-muted">
             Unlock premium features and take your gaming experience to the next level
           </p>
-        </motion.div>
-
-        {/* Billing toggle */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center justify-center gap-3"
-        >
-          <button
-            onClick={() => setBillingPeriod('monthly')}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              billingPeriod === 'monthly'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-foreground-muted hover:text-foreground'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingPeriod('yearly')}
-            className={`relative rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              billingPeriod === 'yearly'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-foreground-muted hover:text-foreground'
-            }`}
-          >
-            Yearly
-            <motion.span
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="absolute -right-2 -top-2 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-foreground"
-            >
-              -20%
-            </motion.span>
-          </button>
         </motion.div>
 
         {/* Current plan indicator */}
@@ -150,11 +114,11 @@ export default function SubscriptionsPage() {
               key={plan.id}
               plan={plan}
               index={index}
-              billingPeriod={billingPeriod}
-              isCurrentPlan={plan.tier === currentTier}
+              isCurrentPlan={isAuth && (subscription?.subscriptionId ? plan.id === planData.currentPlanId : plan.tier === currentTier)}
               isAuth={isAuth}
+              canCancel={subscription?.autoRenew === true}
               onCancel={() => setShowCancelModal(true)}
-              canCheckout={checkoutStatus.data?.available === true}
+              canCheckout={checkoutStatus.data?.available === true && !checkout.isPending}
               onCheckout={() => {
                 if (!isAuth) navigate('/login');
                 else checkout.mutate(plan.id);
@@ -225,35 +189,37 @@ export default function SubscriptionsPage() {
 function PlanCard({
   plan,
   index,
-  billingPeriod,
   isCurrentPlan,
   isAuth,
+  canCancel,
   onCancel,
   canCheckout,
   onCheckout,
 }: {
   plan: PlanResponse;
   index: number;
-  billingPeriod: 'monthly' | 'yearly';
   isCurrentPlan: boolean;
   isAuth: boolean;
+  canCancel: boolean;
   onCancel: () => void;
   canCheckout: boolean;
   onCheckout: () => void;
 }) {
-  const yearlyPrice = plan.price * 12 * 0.8;
-  const displayPrice = billingPeriod === 'yearly'
-    ? (yearlyPrice / 12).toFixed(2)
-    : plan.price.toFixed(2);
+  const displayPrice = new Intl.NumberFormat(undefined, {
+    style: 'currency', currency: plan.currency,
+  }).format(plan.price);
+  const billingInterval = plan.intervalMonths === 1
+    ? '/month'
+    : plan.intervalMonths === 12 ? '/year' : `/${plan.intervalMonths} months`;
 
   return (
     <motion.div
       variants={staggerItem}
       whileHover={{ y: -8, scale: 1.02 }}
       transition={{ duration: 0.3 }}
-      className={`relative overflow-hidden rounded-2xl border p-6 ${
+      className={`relative overflow-hidden rounded-3xl border p-6 sm:p-7 ${
         plan.isHighlighted
-          ? 'border-primary bg-surface shadow-xl shadow-primary/10'
+          ? 'border-primary/70 bg-surface shadow-[0_0_50px_#c5f27708]'
           : 'border-border bg-surface'
       }`}
     >
@@ -262,7 +228,7 @@ function PlanCard({
           initial={{ x: '-100%' }}
           animate={{ x: 0 }}
           transition={{ delay: 0.3 + index * 0.1 }}
-          className="absolute left-0 right-0 top-0 bg-gradient-to-r from-primary to-accent py-1 text-center text-xs font-bold text-white"
+          className="absolute left-0 right-0 top-0 bg-primary py-1.5 text-center text-[9px] font-bold tracking-[.16em] text-primary-foreground"
         >
           MOST POPULAR
         </motion.div>
@@ -277,22 +243,16 @@ function PlanCard({
 
         <div className="mt-4 flex items-baseline gap-1">
           {plan.price === 0 ? (
-            <span className="text-3xl font-extrabold text-foreground">Free</span>
+            <span className="text-4xl font-extrabold tracking-tight text-foreground">Free</span>
           ) : (
             <>
-              <span className="text-3xl font-extrabold text-foreground">
-                ${displayPrice}
+              <span className="text-4xl font-extrabold tracking-tight text-foreground">
+                {displayPrice}
               </span>
-              <span className="text-sm text-foreground-muted">/month</span>
+              <span className="text-sm text-foreground-muted">{billingInterval}</span>
             </>
           )}
         </div>
-
-        {billingPeriod === 'yearly' && plan.price > 0 && (
-          <p className="mt-1 text-xs text-accent">
-            Billed ${yearlyPrice.toFixed(2)}/year (save 20%)
-          </p>
-        )}
 
         <ul className="mt-6 space-y-3">
           {plan.features.map((feature) => (
@@ -317,7 +277,7 @@ function PlanCard({
               <Button variant="outline" className="w-full" disabled>
                 Current Plan
               </Button>
-              {plan.price > 0 && (
+              {plan.price > 0 && canCancel && (
                 <button
                   onClick={onCancel}
                   className="w-full text-xs text-foreground-subtle hover:text-danger transition-colors"

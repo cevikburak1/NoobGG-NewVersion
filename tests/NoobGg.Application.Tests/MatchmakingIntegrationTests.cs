@@ -15,7 +15,7 @@ public class MatchmakingIntegrationTests
     public async Task Closing_room_saves_one_session_before_removing_members()
     {
         var connectionString = Environment.GetEnvironmentVariable("MONGO_TEST_URI");
-        if (string.IsNullOrWhiteSpace(connectionString)) return;
+        Assert.False(string.IsNullOrWhiteSpace(connectionString), "Set MONGO_TEST_URI to an isolated test MongoDB");
         var databaseName = $"noobgg_test_{Guid.NewGuid():N}";
         var client = new MongoClient(connectionString);
         var mongo = new TestMongoContext(client.GetDatabase(databaseName));
@@ -49,7 +49,7 @@ public class MatchmakingIntegrationTests
     public async Task Concurrent_requests_keep_one_queue_entry_and_one_match_room()
     {
         var connectionString = Environment.GetEnvironmentVariable("MONGO_TEST_URI");
-        if (string.IsNullOrWhiteSpace(connectionString)) return;
+        Assert.False(string.IsNullOrWhiteSpace(connectionString), "Set MONGO_TEST_URI to an isolated test MongoDB");
 
         var databaseName = $"noobgg_test_{Guid.NewGuid():N}";
         var client = new MongoClient(connectionString);

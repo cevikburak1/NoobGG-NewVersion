@@ -137,7 +137,7 @@ export default function DiscoverPage() {
   const displayedRecommendations = useAiRecommendations
     ? aiRecommendedData?.players ?? []
     : recommendedPlayers ?? [];
-  const showRecent = isAuth && !hasActiveFilters && (recentPlayers?.length || recentRooms?.length);
+  const showRecent = isAuth && !hasActiveFilters && Boolean(recentPlayers?.length || recentRooms?.length);
 
   const totalGames = gamesResult?.totalCount ?? 0;
   const totalPlayers = playersResult?.totalCount ?? 0;
@@ -146,13 +146,13 @@ export default function DiscoverPage() {
     <AnimatedPage>
       <div className="space-y-6">
         {/* Hero Section */}
-        <div ref={heroRef} className="relative -mx-4 -mt-4 overflow-hidden lg:-mx-8">
+        <div ref={heroRef} className="page-hero">
           <motion.div style={{ opacity: heroOpacity }} className="absolute inset-0 bg-linear-to-br from-primary/8 via-accent/5 to-transparent" />
-          <div className="relative px-4 pb-4 pt-6 lg:px-8">
-            <div className="mx-auto max-w-4xl">
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="relative">
+            <div className="mx-auto max-w-none">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                  <h1 className="text-3xl font-bold tracking-tight text-foreground">Discover</h1>
+                  <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">Discover</h1>
                   <p className="mt-1 text-sm text-foreground-muted">Find players and games that match your style</p>
                 </motion.div>
                 <motion.div

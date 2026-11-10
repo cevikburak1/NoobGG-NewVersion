@@ -1,4 +1,5 @@
 using MediatR;
+using System.Security.Cryptography;
 using MongoDB.Driver;
 using NoobGg.Application.Common.Constants;
 using NoobGg.Application.Common.Interfaces;
@@ -47,7 +48,7 @@ public class ResendVerificationEmailCommandHandler : IRequestHandler<ResendVerif
         var verificationToken = new EmailVerificationToken
         {
             UserId = user.Id,
-            Token = Guid.NewGuid().ToString("N"),
+            Token = RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString(),
             ExpiresAt = DateTime.UtcNow.AddHours(24)
         };
         await tokens.InsertOneAsync(verificationToken, cancellationToken: ct);

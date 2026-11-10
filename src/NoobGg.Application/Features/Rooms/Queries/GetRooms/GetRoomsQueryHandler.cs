@@ -12,10 +12,12 @@ namespace NoobGg.Application.Features.Rooms.Queries.GetRooms;
 public class GetRoomsQueryHandler : IRequestHandler<GetRoomsQuery, Result<PagedResult<RoomResponse>>>
 {
     private readonly IMongoContext _mongoContext;
+    private readonly ICurrentUser _currentUser;
 
-    public GetRoomsQueryHandler(IMongoContext mongoContext)
+    public GetRoomsQueryHandler(IMongoContext mongoContext, ICurrentUser currentUser)
     {
         _mongoContext = mongoContext;
+        _currentUser = currentUser;
     }
 
     public async Task<Result<PagedResult<RoomResponse>>> Handle(GetRoomsQuery request, CancellationToken ct)
@@ -29,6 +31,8 @@ public class GetRoomsQueryHandler : IRequestHandler<GetRoomsQuery, Result<PagedR
         if (!string.IsNullOrWhiteSpace(request.CreatorId))
         {
             filters.Add(filterBuilder.Eq(r => r.CreatorId, request.CreatorId));
+            if (!_currentUser.IsAuthenticated || _currentUser.UserId != request.CreatorId)
+                filters.Add(filterBuilder.Eq(r => r.IsPublic, true));
             if (request.Status.HasValue)
                 filters.Add(filterBuilder.Eq(r => r.Status, request.Status.Value));
         }

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion } from 'framer-motion';
 import { registerSchema } from '@/features/auth/schemas';
@@ -26,11 +26,11 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const registerMutation = useRegister();
 
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<RegisterFormData>({
+  const { register, handleSubmit, formState: { errors }, control } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
 
-  const password = watch('password', '');
+  const password = useWatch({ control, name: 'password', defaultValue: '' });
   const passwordStrength = getPasswordStrength(password);
 
   const onSubmit = (data: RegisterFormData) => {

@@ -1,5 +1,6 @@
 using MediatR;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using MongoDB.Bson;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -82,7 +83,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
         {
             var tokens = _mongoContext.GetCollection<EmailVerificationToken>(CollectionNames.EmailVerificationTokens);
 
-            var code = Random.Shared.Next(100_000, 999_999).ToString();
+            var code = RandomNumberGenerator.GetInt32(100_000, 1_000_000).ToString();
 
             var verificationToken = new EmailVerificationToken
             {
